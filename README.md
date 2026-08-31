@@ -119,7 +119,7 @@ aws cloudfront create-invalidation --distribution-id <ID> --paths '/*'
 
 ### Wiring up CI
 
-The workflow authenticates with OIDC, so no AWS keys are stored in GitHub. One-time setup, replacing `<ACCOUNT_ID>`, `<DISTRIBUTION_ID>` and `<BUCKET>`:
+The workflow authenticates with OIDC, so no AWS keys are stored in GitHub. One-time setup, replacing `<ACCOUNT_ID>`, `<DISTRIBUTION_ID>`, `<BUCKET>`, and the owner/repo ids in step 2:
 
 **1. Register GitHub as an identity provider.** IAM → Identity providers → Add provider → OpenID Connect, URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`. AWS pre-verifies this one, so there's no thumbprint to maintain.
 
@@ -135,12 +135,20 @@ The workflow authenticates with OIDC, so no AWS keys are stored in GitHub. One-t
     "Condition": {
       "StringEquals": {
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": "repo:Jay-Way/sprint-name-generator:ref:refs/heads/main"
+        "token.actions.githubusercontent.com:sub": "repo:<OWNER>@<OWNER_ID>/<REPO>@<REPO_ID>:ref:refs/heads/main"
       }
     }
   }]
 }
 ```
+
+**Note the `@<id>` suffixes — they are not optional.** GitHub issues the subject claim with immutable numeric identifiers appended to the owner and repository names, so that a renamed repo can't be impersonated by whoever claims the old name. The plain `repo:owner/name:ref:...` form you'll find in most tutorials never matches, and the failure is indistinguishable from a nonexistent role: `Not authorized to perform sts:AssumeRoleWithWebIdentity`, with nothing on the AWS side looking wrong. Every other claim (`repository`, `repository_owner`, `ref`) still uses plain names — only `sub` carries the ids. Fetch them with:
+
+```bash
+curl -s https://api.github.com/repos/<OWNER>/<REPO> | jq '{owner_id: .owner.id, repo_id: .id}'
+```
+
+To read the claim the token actually carries — worth doing if assume-role fails — add a step that decodes the payload of the token from `$ACTIONS_ID_TOKEN_REQUEST_URL` and prints `.sub`. Print selected claims only; the token itself is a bearer credential.
 
 **3. Attach this permission policy.** Two objects and one invalidation — nothing else:
 
