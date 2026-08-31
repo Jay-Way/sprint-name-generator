@@ -1,0 +1,4 @@
+# Build output. Everything in here is generated from index.html, names.js
+# and og.png by build.js — see README → Project structure.
+dist/
+.idea

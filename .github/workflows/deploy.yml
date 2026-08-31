@@ -3,10 +3,13 @@ name: Deploy
 on:
   push:
     branches: [main]
-    # The corpus and the app. A README edit shouldn't spend an invalidation.
+    # The corpus, the app, the generator and the social card. A README edit
+    # shouldn't spend an invalidation.
     paths:
       - index.html
       - names.js
+      - build.js
+      - og.png
       - .github/workflows/deploy.yml
   workflow_dispatch:
 
@@ -25,13 +28,13 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
       BUCKET: ${{ vars.S3_BUCKET }}
-      # An invalidation clears the CloudFront edge, not browsers that already
-      # hold names.js. Keep the browser window short so returning visitors
-      # don't sit on a stale corpus.
-      CACHE_CONTROL: public, max-age=300
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Check required repo variables
         env:
@@ -42,6 +45,12 @@ jobs:
           test -n "$DISTRIBUTION_ID" || { echo "::error::Repo variable CLOUDFRONT_DISTRIBUTION_ID is not set. See README → Deployment."; exit 1; }
           test -n "$BUCKET" || { echo "::error::Repo variable S3_BUCKET is not set. See README → Deployment."; exit 1; }
 
+      # Generates dist/ — the app, the corpus, and the crawlable register
+      # built from it. Runs before the role is assumed: no credentials are in
+      # the environment while third-party-free but still untrusted code runs.
+      - name: Build the site
+        run: node build.js
+
       - name: Assume the deploy role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -49,19 +58,21 @@ jobs:
           role-session-name: sprintname-deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Two explicit uploads rather than a sync: only s3:PutObject is needed,
-      # and nothing else in the working tree can be swept along by accident.
-      # The charset is spelled out because the corpus is full of ’.
-      - name: Upload index.html and names.js
+      # Explicit per-object cp rather than a sync: only s3:PutObject is needed,
+      # nothing else in the working tree can be swept along by accident, and
+      # each object carries the content type dist/manifest.json declares. The
+      # charset is spelled out there because the corpus is full of ’, and
+      # the register's key is extensionless, so S3 would otherwise guess.
+      - name: Upload dist/
         run: |
-          aws s3 cp index.html "s3://$BUCKET/index.html" \
-            --content-type 'text/html; charset=utf-8' \
-            --cache-control "$CACHE_CONTROL" \
-            --no-progress
-          aws s3 cp names.js "s3://$BUCKET/names.js" \
-            --content-type 'text/javascript; charset=utf-8' \
-            --cache-control "$CACHE_CONTROL" \
-            --no-progress
+          set -euo pipefail
+          while IFS=$'\t' read -r key ctype cache; do
+            echo "  $key  ($ctype)"
+            aws s3 cp "dist/$key" "s3://$BUCKET/$key" \
+              --content-type "$ctype" \
+              --cache-control "$cache" \
+              --no-progress
+          done < <(jq -r '.[] | [.key, .contentType, .cacheControl] | @tsv' dist/manifest.json)
 
       # /* rather than the two paths: it counts as a single path against the
       # 1000/month free tier, and it also covers "/", which serves index.html

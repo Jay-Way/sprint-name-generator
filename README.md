@@ -31,6 +31,7 @@ Other things it does:
 - **Character limit filter** for teams whose tracker caps sprint names (see below)
 - **Live character count** on every result, so you can eyeball it against any limit
 - **Deep links** — every name has a URL (`#/oncall/three-am-deployment`)
+- **[The register](https://sprintname.dev/funny-sprint-names)** — all 447 names on one page, grouped by genre, with character counts
 - **Copy button** for pasting straight into your tracker
 - **Genre-tinted UI** — each genre stamps in its own ink
 - Escalating button labels, for the persistent
@@ -69,13 +70,28 @@ If your prefix is longer than four characters, adjust the tightest preset in `LI
 ## Project structure
 
 ```
-index.html   app — markup, styles, generator logic (~600 lines, no dependencies)
-names.js     the corpus — one array per genre
+index.html        app — markup, styles, generator logic (~600 lines, no dependencies)
+names.js          the corpus — one array per genre
+og.png            social card, 1200×630
+build.js          assembles dist/ — no dependencies either
+tools/og-card.html   source of og.png, for when the card needs redrawing
 ```
 
-That's the whole thing. No build step, no framework, no package.json. Open `index.html` in a browser and it works.
+`index.html` still works if you just open it in a browser. There is no framework and no `package.json`.
 
 The corpus is deliberately a separate file: names change far more often than code, and editing them shouldn't mean touching the app.
+
+### What `build.js` is for
+
+A crawler will not press **Convene committee**, so a search engine sees a page whose entire content is the words *No designation issued*. `build.js` fixes that by emitting the corpus a second time as flat HTML at [`/funny-sprint-names`](https://sprintname.dev/funny-sprint-names) — every name, grouped by genre, each one linking back to its deep link in the app.
+
+It has no dependencies and reads the design straight out of `index.html`: the `<style>` block and the seal are lifted by regex rather than restated, so the register cannot drift from the app it belongs to. Adding a genre to `names.js` adds a section to the register, but it also needs a one-line entry in `BLURBS` — the build fails loudly if you forget, because a page of bare lists is a page Google files under *thin*.
+
+```bash
+node build.js     # → dist/, plus dist/manifest.json listing what to upload where
+```
+
+`dist/` is generated and gitignored. `dist/manifest.json` is what the deploy workflow iterates over, so **adding a page later is a change to `build.js` alone** — the workflow does not need touching.
 
 ## Adding names
 
@@ -105,17 +121,22 @@ Add an object with a unique `id`, a `label`, and an `accent` — an institutiona
 
 ## Deployment
 
-Static hosting, S3 + CloudFront. Pushes to `main` that touch `index.html` or `names.js` deploy themselves — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) uploads the two files and invalidates the distribution. Run it by hand from the Actions tab (`workflow_dispatch`) if you need to.
+Static hosting, S3 + CloudFront. Pushes to `main` that touch `index.html`, `names.js`, `build.js` or `og.png` deploy themselves — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs the build, uploads everything `dist/manifest.json` lists, and invalidates the distribution. Run it by hand from the Actions tab (`workflow_dispatch`) if you need to.
+
+The build runs *before* the deploy role is assumed, so no AWS credentials are in the environment while it executes.
 
 The manual equivalent:
 
 ```bash
-aws s3 cp index.html s3://<BUCKET>/index.html \
-  --content-type 'text/html; charset=utf-8' --cache-control 'public, max-age=300'
-aws s3 cp names.js s3://<BUCKET>/names.js \
-  --content-type 'text/javascript; charset=utf-8' --cache-control 'public, max-age=300'
+node build.js
+jq -r '.[] | [.key, .contentType, .cacheControl] | @tsv' dist/manifest.json |
+while IFS=$'\t' read -r key ctype cache; do
+  aws s3 cp "dist/$key" "s3://<BUCKET>/$key" --content-type "$ctype" --cache-control "$cache"
+done
 aws cloudfront create-invalidation --distribution-id <ID> --paths '/*'
 ```
+
+Object keys are extensionless where the URL is (`funny-sprint-names`, not `funny-sprint-names.html`), which is why every upload sets `--content-type` explicitly — S3 would otherwise serve the register as `application/octet-stream` and the browser would download it. It also means **no CloudFront Function is needed**: there is no directory index to resolve, because there are no directories.
 
 ### Wiring up CI
 
@@ -150,7 +171,7 @@ curl -s https://api.github.com/repos/<OWNER>/<REPO> | jq '{owner_id: .owner.id, 
 
 To read the claim the token actually carries — worth doing if assume-role fails — add a step that decodes the payload of the token from `$ACTIONS_ID_TOKEN_REQUEST_URL` and prints `.sub`. Print selected claims only; the token itself is a bearer credential.
 
-**3. Attach this permission policy.** Two objects and one invalidation — nothing else:
+**3. Attach this permission policy.** Writes into one bucket and one invalidation — nothing else:
 
 ```json
 {
@@ -159,10 +180,7 @@ To read the claim the token actually carries — worth doing if assume-role fail
     {
       "Effect": "Allow",
       "Action": "s3:PutObject",
-      "Resource": [
-        "arn:aws:s3:::<BUCKET>/index.html",
-        "arn:aws:s3:::<BUCKET>/names.js"
-      ]
+      "Resource": "arn:aws:s3:::<BUCKET>/*"
     },
     {
       "Effect": "Allow",
@@ -172,6 +190,8 @@ To read the claim the token actually carries — worth doing if assume-role fail
   ]
 }
 ```
+
+The `Resource` was an explicit two-key allowlist before the register existed. It has to be a wildcard now that the set of objects is generated rather than fixed — the alternative is editing an IAM policy every time a page is added. The bucket serves nothing but this site, and the role still cannot read, list, or delete.
 
 **4. Set the repo variables** under Settings → Secrets and variables → Actions → *Variables*. None of these are secret:
 
