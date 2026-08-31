@@ -10,6 +10,7 @@ on:
       - names.js
       - build.js
       - og.png
+      - fonts/**
       - .github/workflows/deploy.yml
   workflow_dispatch:
 

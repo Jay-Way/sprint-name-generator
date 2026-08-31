@@ -33,8 +33,24 @@ const lift = (re, label) => {
   return m[0];
 };
 const styleBlock = lift(/<style>[\s\S]*?<\/style>/, "the <style> block");
+const LIMITS = eval(lift(/const LIMITS = \[[\s\S]*?\];/, "the LIMITS table") + " LIMITS;");
 const faviconLink = lift(/<link rel="icon"[^>]*>/, "the favicon");
-const fontLinks = indexHtml.match(/<link rel="preconnect"[^>]*>|<link rel="stylesheet" href="https:\/\/fonts\.googleapis[^>]*>/g).join("\n");
+/* The @font-face rules ride along inside styleBlock. What differs per page is
+   which faces are worth preloading, and the register leads with prose rather
+   than chips — so IBM Plex Sans matters here and Mono 500 does not. */
+const FONTS = [
+  "archivo-black-400.woff2",
+  "ibm-plex-mono-400.woff2",
+  "ibm-plex-mono-500.woff2",
+  "ibm-plex-mono-600.woff2",
+  "ibm-plex-sans-var.woff2"
+];
+const registerPreloads = [
+  "archivo-black-400.woff2",
+  "ibm-plex-mono-400.woff2",
+  "ibm-plex-mono-600.woff2",
+  "ibm-plex-sans-var.woff2"
+].map(f => '<link rel="preload" href="/fonts/' + f + '" as="font" type="font/woff2" crossorigin>').join("\n");
 
 /* ---------- the prose ----------
    A page that is only a list of names is a page Google files under
@@ -118,7 +134,7 @@ const registerHtml = `<!doctype html>
 <meta name="twitter:description" content="${esc(DESC)}">
 <meta name="twitter:image" content="${ORIGIN}/og.png">
 ${faviconLink}
-${fontLinks}
+${registerPreloads}
 ${styleBlock}
 <style>
 /* ---------- register-only ---------- */
@@ -319,6 +335,26 @@ const LONG = "public, max-age=31536000, immutable";
    runtime — <title>, the description, the JSON-LD. Rather than let those drift
    every time names are added, the shipped copy gets the real number written in.
    Each pattern must match: a silent miss would defeat the point. */
+/* The chips are the page's only JS-built markup above the fold, and building
+   them at runtime reflowed everything below. Written in here they are present
+   at first paint; index.html's wireChips() then only attaches handlers. The
+   genre labels become indexable text on the homepage as a side effect. */
+function renderChips(html) {
+  const chips = labels => labels
+    .map(l => '<button class="chip" type="button">' + esc(l) + "</button>")
+    .join("");
+  const into = (h, id, labels) => {
+    const re = new RegExp('(<div class="chips" id="' + id + '"[^>]*>)</div>');
+    if (!re.test(h)) throw new Error(
+      "build: could not find an empty #" + id + " container in index.html. "
+      + "If its markup changed, update renderChips().");
+    return h.replace(re, "$1" + chips(labels) + "</div>");
+  };
+  return into(
+    into(html, "genre-chips", GENRES.map(g => g.label)),
+    "limit-chips", LIMITS.map(l => l.label));
+}
+
 function syncCount(html) {
   const patterns = [
     [/(<title>Sprint Name Generator \u2014 )\d+( Funny Sprint Names<\/title>)/, "title"],
@@ -345,10 +381,16 @@ if (GENRES.length !== 9) {
 }
 
 const files = [
-  { key: "index.html", body: syncCount(indexHtml), contentType: "text/html; charset=utf-8", cacheControl: SHORT },
+  { key: "index.html", body: renderChips(syncCount(indexHtml)), contentType: "text/html; charset=utf-8", cacheControl: SHORT },
   { key: "names.js", body: namesJs, contentType: "text/javascript; charset=utf-8", cacheControl: SHORT },
   { key: "funny-sprint-names", body: registerHtml, contentType: "text/html; charset=utf-8", cacheControl: SHORT },
-  { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG }
+  { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
+  ...FONTS.map(f => ({
+    key: "fonts/" + f,
+    body: fs.readFileSync(path.join(__dirname, "fonts", f)),
+    contentType: "font/woff2",
+    cacheControl: LONG
+  }))
 ];
 
 fs.rmSync(OUT, { recursive: true, force: true });

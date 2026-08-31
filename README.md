@@ -73,19 +73,38 @@ If your prefix is longer than four characters, adjust the tightest preset in `LI
 index.html        app — markup, styles, generator logic (~600 lines, no dependencies)
 names.js          the corpus — one array per genre
 og.png            social card, 1200×630
+fonts/            self-hosted woff2, latin subset
 build.js          assembles dist/ — no dependencies either
 tools/og-card.html   source of og.png, for when the card needs redrawing
 ```
 
-`index.html` still works if you just open it in a browser. There is no framework and no `package.json`.
+There is no framework and no `package.json`.
+
+Opening `index.html` straight from disk still works, but the `@font-face` rules use absolute `/fonts/…` paths, so from `file://` the type falls back to system fonts. To see it as it ships, serve the build:
+
+```bash
+node build.js && (cd dist && python3 -m http.server 8000)
+```
 
 The corpus is deliberately a separate file: names change far more often than code, and editing them shouldn't mean touching the app.
+
+### Fonts
+
+Self-hosted, latin subset, five woff2 files totalling 116 KB — of which the homepage fetches 64 KB, because nothing on it renders in IBM Plex Sans. Both families are OFL-licensed, so redistributing them here is fine.
+
+They were served from Google Fonts until PageSpeed put a number on it: a render-blocking stylesheet on a third origin, 750 ms before a single glyph could be resolved, and a second hop to `fonts.gstatic.com` after that. The `@font-face` rules now sit inline in the style block and the files ship from the same CloudFront distribution as the page, preloaded. That also makes the footer's *nothing is transmitted* claim true — the site now makes no third-party request at all.
+
+The `unicode-range` descriptors are copied verbatim from Google's CSS rather than dropped, so characters outside latin still fall through to a system font instead of rendering as `.notdef` boxes. `≤`, in the character-limit chips, is one of them.
+
+To change weights, edit the Google Fonts URL in `tools/`, download the latin-subset woff2 it points at, and update the `@font-face` block and the `FONTS` list in `build.js` to match.
 
 ### What `build.js` is for
 
 A crawler will not press **Convene committee**, so a search engine sees a page whose entire content is the words *No designation issued*. `build.js` fixes that by emitting the corpus a second time as flat HTML at [`/funny-sprint-names`](https://sprintname.dev/funny-sprint-names) — every name, grouped by genre, each one linking back to its deep link in the app.
 
-It has no dependencies and reads the design straight out of `index.html`: the `<style>` block and the seal are lifted by regex rather than restated, so the register cannot drift from the app it belongs to. Adding a genre to `names.js` adds a section to the register, but it also needs a one-line entry in `BLURBS` — the build fails loudly if you forget, because a page of bare lists is a page Google files under *thin*.
+It also **pre-renders the genre and character-limit chips** into `index.html`. They used to be built by the script at runtime, which meant two rows of buttons appeared after first paint and shoved every section below them down the page — 0.30 of cumulative layout shift, and the single largest CLS contributor the site had. Written into the markup they cost nothing, and the genre labels become indexable text as a side effect. `wireChips()` in the app only attaches handlers to whatever is already there, and falls back to creating the buttons when the page is opened unbuilt from disk.
+
+It has no dependencies and reads the design straight out of `index.html`: the `<style>` block, the `LIMITS` table and the seal are lifted by regex rather than restated, so the register cannot drift from the app it belongs to. Adding a genre to `names.js` adds a section to the register, but it also needs a one-line entry in `BLURBS` — the build fails loudly if you forget, because a page of bare lists is a page Google files under *thin*.
 
 ```bash
 node build.js     # → dist/, plus dist/manifest.json listing what to upload where
