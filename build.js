@@ -394,7 +394,7 @@ const registerPage = shell({
     ${crumbs([{ label: "Generator", url: "/" }, { label: "Funny Sprint Names" }])}
     <h1 class="page-title">Funny Sprint Names</h1>
     <p class="lede">Every name this office has ever issued, all ${total} of them, published in full. They exist because the alternative was another sprint called <em>Synergy &amp; Innovation</em>, and because the generators that produce <em>Sprint Blue Falcon</em> by welding an adjective to a random noun are not actually funny — they just have the shape of a joke.</p>
-    <p class="lede">Nothing here is generated. Every entry was written by hand and earns its place by being either technically specific (<em>Woodworms in Hashtable</em>) or tonally deranged (<em>The Scrum Master Has No Reflection</em>). Mild office humour is the exact failure mode this register exists to escape.</p>
+    <p class="lede">Nothing here is generated. Every entry was written by hand and earns its place by being either uncomfortably accurate (<em>Refactor and Pray</em>) or tonally deranged (<em>Soft Launch Into Darkness</em>). Mild office humour is the exact failure mode this register exists to escape.</p>
     <p class="lede">The number after each name is its character count, which matters more than it should — see <a href="${JIRA_URL}">sprint name character limits in Jira</a>. Click any name to have it stamped properly by <a href="/">the generator</a>.</p>
   </section>
 

@@ -107,7 +107,7 @@ const GENRE_PAGES = {
     useIt: "The sprint whose actual root cause is still unknown. This is the register's most reliable genre.",
     avoid: "An audience that will fact-check it. Half the humour is the refusal to be checkable.",
     picks: [
-      ["Woodworms in Hashtable", "The founding example, and the one the project uses to explain its bar for inclusion."],
+      ["Woodworms in Hashtable", "The founding example of the construction rule. Nothing in a hashtable can rot, which is the entire joke."],
       ["node_modules Reached Critical Density", "Too long for Jira, correct in every other respect."],
       ["CSS Became Load-Bearing", "Not an excuse so much as a diagnosis."]
     ]
@@ -135,7 +135,7 @@ const GENRE_PAGES = {
     useIt: "Sprint 13. Obviously.",
     avoid: "Sprint 13, if anyone on the team is superstitious about it. There is a name in here for that situation too.",
     picks: [
-      ["The Scrum Master Has No Reflection", "The register's own benchmark for what counts as tonally deranged."],
+      ["The Scrum Master Has No Reflection", "Never says the word <em>vampire</em>, and does not need to. The genre at its most economical."],
       ["Nothing Was Committed. Something Was.", "The only entry with two sentences, and it earns both of them."],
       ["Do Not Name the Sprint", "Advice this entire site declines to take."]
     ]

@@ -7,7 +7,7 @@ A fast, static, slightly unhinged source of genuinely funny sprint names for sof
 
 Because naming a sprint should not produce another round of *"Synergy & Innovation"*, *"Customer Centricity"*, or whatever corporate compliance accidentally generated this morning.
 
-**Less "Corporate Agile Excellence". More "Woodworms in Hashtable".**
+**Less "Corporate Agile Excellence". More "Refactor and Pray".**
 
 → [sprintname.dev](https://sprintname.dev)
 
@@ -138,13 +138,13 @@ Append to the relevant array in `names.js`:
 
 House rules, so the corpus stays coherent:
 
-- **Title Case, with small words lowercase** — `Woodworms in Hashtable`, not `Woodworms In Hashtable`
+- **Title Case, with small words lowercase** — `Refactor and Pray`, not `Refactor And Pray`
 - **Acronyms and identifiers keep their casing** — `Must Be DNS`, `node_modules Reached Critical Density`
 - **Typographic apostrophes** (`’`, not `'`) — they're set at display size and it shows
 - **Under ~42 characters.** Longer still renders, at the smallest tier, but it stops being a sprint name and starts being a sentence
 - **No duplicates across genres.** A name belongs to exactly one
 
-The bar for inclusion: a name earns its place by being either **technically specific** (`Woodworms in Hashtable`) or **tonally deranged** (`The Scrum Master Has No Reflection`). Merely mild office humour is the failure mode this project exists to escape.
+The bar for inclusion: a name earns its place by being either **uncomfortably accurate** (`Refactor and Pray`) or **tonally deranged** (`Soft Launch Into Darkness`). Merely mild office humour is the failure mode this project exists to escape.
 
 ### Adding a genre
 
