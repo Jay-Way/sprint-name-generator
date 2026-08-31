@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    # The corpus and the app. A README edit shouldn't spend an invalidation.
+    paths:
+      - index.html
+      - names.js
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+
+# One deploy at a time, so two quick pushes can't invalidate over each other.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required to request the OIDC token
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      BUCKET: ${{ vars.S3_BUCKET }}
+      # An invalidation clears the CloudFront edge, not browsers that already
+      # hold names.js. Keep the browser window short so returning visitors
+      # don't sit on a stale corpus.
+      CACHE_CONTROL: public, max-age=300
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required repo variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          test -n "$ROLE_ARN" || { echo "::error::Repo variable AWS_ROLE_ARN is not set. See README → Deployment."; exit 1; }
+          test -n "$DISTRIBUTION_ID" || { echo "::error::Repo variable CLOUDFRONT_DISTRIBUTION_ID is not set. See README → Deployment."; exit 1; }
+          test -n "$BUCKET" || { echo "::error::Repo variable S3_BUCKET is not set. See README → Deployment."; exit 1; }
+
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-session-name: sprintname-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Two explicit uploads rather than a sync: only s3:PutObject is needed,
+      # and nothing else in the working tree can be swept along by accident.
+      # The charset is spelled out because the corpus is full of ’.
+      - name: Upload index.html and names.js
+        run: |
+          aws s3 cp index.html "s3://$BUCKET/index.html" \
+            --content-type 'text/html; charset=utf-8' \
+            --cache-control "$CACHE_CONTROL" \
+            --no-progress
+          aws s3 cp names.js "s3://$BUCKET/names.js" \
+            --content-type 'text/javascript; charset=utf-8' \
+            --cache-control "$CACHE_CONTROL" \
+            --no-progress
+
+      # /* rather than the two paths: it counts as a single path against the
+      # 1000/month free tier, and it also covers "/", which serves index.html
+      # via the default root object and would otherwise stay cached.
+      - name: Invalidate CloudFront
+        env:
+          DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          id=$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths '/*' \
+            --query 'Invalidation.Id' --output text)
+          echo "Invalidation $id created for $DISTRIBUTION_ID" >> "$GITHUB_STEP_SUMMARY"

@@ -44,11 +44,8 @@ Jira caps sprint names at **30 characters**. Teams that prefix their sprints (`T
 | Preset | Names available |
 |---|--:|
 | No limit | 447 |
-| ≤ 40 | 447 |
 | ≤ 30 — Jira's actual cap | 417 |
 | ≤ 26 — room for a short prefix | 372 |
-
-`≤ 40` currently excludes nothing — the longest name on file is exactly 40 characters. It stays as a guard rail for names not yet written.
 
 Your choice persists between visits. When a filtered pool runs dry but longer names remain unissued, the main button becomes **Raise the limit** and steps out one notch — it won't silently strand you with nothing to press.
 
@@ -108,17 +105,85 @@ Add an object with a unique `id`, a `label`, and an `accent` — an institutiona
 
 ## Deployment
 
-Static hosting, S3 + CloudFront:
+Static hosting, S3 + CloudFront. Pushes to `main` that touch `index.html` or `names.js` deploy themselves — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) uploads the two files and invalidates the distribution. Run it by hand from the Actions tab (`workflow_dispatch`) if you need to.
+
+The manual equivalent:
 
 ```bash
-aws s3 sync . s3://sprintname.dev --exclude "*" --include "index.html" --include "names.js"
+aws s3 cp index.html s3://<BUCKET>/index.html \
+  --content-type 'text/html; charset=utf-8' --cache-control 'public, max-age=300'
+aws s3 cp names.js s3://<BUCKET>/names.js \
+  --content-type 'text/javascript; charset=utf-8' --cache-control 'public, max-age=300'
+aws cloudfront create-invalidation --distribution-id <ID> --paths '/*'
 ```
 
-Then invalidate the distribution so edits propagate. Notes for anyone recreating this setup:
+### Wiring up CI
 
+The workflow authenticates with OIDC, so no AWS keys are stored in GitHub. One-time setup, replacing `<ACCOUNT_ID>`, `<DISTRIBUTION_ID>` and `<BUCKET>`:
+
+**1. Register GitHub as an identity provider.** IAM → Identity providers → Add provider → OpenID Connect, URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`. AWS pre-verifies this one, so there's no thumbprint to maintain.
+
+**2. Create a role** for the provider, with this trust policy. The `sub` condition is what stops any other repo — or a branch other than `main` — from assuming it:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com" },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+        "token.actions.githubusercontent.com:sub": "repo:Jay-Way/sprint-name-generator:ref:refs/heads/main"
+      }
+    }
+  }]
+}
+```
+
+**3. Attach this permission policy.** Two objects and one invalidation — nothing else:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": [
+        "arn:aws:s3:::<BUCKET>/index.html",
+        "arn:aws:s3:::<BUCKET>/names.js"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::<ACCOUNT_ID>:distribution/<DISTRIBUTION_ID>"
+    }
+  ]
+}
+```
+
+**4. Set the repo variables** under Settings → Secrets and variables → Actions → *Variables*. None of these are secret:
+
+| Variable | Value |
+|---|---|
+| `AWS_ROLE_ARN` | the role from step 2 — **required** |
+| `CLOUDFRONT_DISTRIBUTION_ID` | the distribution in front of the bucket — **required** |
+| `S3_BUCKET` | the bucket name — **required** |
+| `AWS_REGION` | optional, the bucket's region; defaults to `eu-central-1` |
+
+The workflow fails fast naming the missing variable, rather than dying inside the AWS CLI. The bucket name is a variable rather than a default in the workflow deliberately: bucket names commonly embed the account id, and that keeps it out of a public repo.
+
+### Notes for anyone recreating this setup
+
+- **If the bucket is encrypted with SSE-KMS**, the role also needs `kms:GenerateDataKey` and `kms:Decrypt` on the key. Default SSE-S3 encryption needs nothing extra. The failure mode is `AccessDenied` on upload despite a correct S3 policy.
 - **The ACM certificate must live in `us-east-1`.** CloudFront reads certs from N. Virginia only, regardless of where the bucket or distribution are. A cert in any other region won't even appear in the dropdown — the failure mode is a silently empty list, not an error.
 - **`.dev` is HSTS-preloaded.** The whole TLD ships on the preload list in every major browser, so plaintext HTTP is refused outright. TLS isn't optional here, and there's no cleartext fallback to configure.
 - **Keep the bucket private, use OAC.** Don't enable S3 static website hosting — that mode requires a public bucket and only speaks HTTP to the origin.
+- **The bucket name is arbitrary.** It only has to match the domain when serving via S3 static website hosting behind a Route 53 alias. Fronted by CloudFront with OAC, the origin is referenced by its endpoint, so any name works.
+- **Don't give the deploy job an `environment:` without changing the trust policy.** Referencing an environment rewrites the OIDC `sub` claim from `repo:…:ref:refs/heads/main` to `repo:…:environment:<name>`, and the role stops being assumable. If you want deployment gates, pin `sub` to the environment form instead and add a `"token.actions.githubusercontent.com:ref": "refs/heads/main"` condition to keep the branch restriction.
 - **No SPA error-page rewrites needed.** Deep links are hash fragments, which never reach the server. Set `index.html` as the default root object and you're done.
 
 ## Roadmap
