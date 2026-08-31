@@ -9,6 +9,7 @@ on:
       - index.html
       - names.js
       - build.js
+      - content.js
       - og.png
       - fonts/**
       - .github/workflows/deploy.yml
@@ -31,7 +32,12 @@ jobs:
       BUCKET: ${{ vars.S3_BUCKET }}
 
     steps:
+      # Full history: build.js dates the sitemap from the last commit that
+      # touched a build input. A shallow clone has no such history, and the
+      # sitemap would ship without <lastmod>.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

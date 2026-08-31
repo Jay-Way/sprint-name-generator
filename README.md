@@ -32,6 +32,8 @@ Other things it does:
 - **Live character count** on every result, so you can eyeball it against any limit
 - **Deep links** — every name has a URL (`#/oncall/three-am-deployment`)
 - **[The register](https://sprintname.dev/funny-sprint-names)** — all 447 names on one page, grouped by genre, with character counts
+- **[A page per genre](https://sprintname.dev/sprint-names/occult-scrum)** — what each one is for, when it lands, when it doesn't
+- **[Character limits in Jira](https://sprintname.dev/sprint-names-for-jira)** — the number, where it comes from, and what fits under it
 - **Copy button** for pasting straight into your tracker
 - **Genre-tinted UI** — each genre stamps in its own ink
 - Escalating button labels, for the persistent
@@ -40,7 +42,7 @@ No backend, no accounts, no tracking, no network requests after page load. Nothi
 
 ## Character limits
 
-Jira caps sprint names at **30 characters**. Teams that prefix their sprints (`TEAM-1 Refactor and Pray`) spend part of that budget before the name begins, so the tightest preset leaves room for one.
+Jira caps sprint names at **30 characters** — in the UI only; the database column holds 255. The open requests to raise it ([JSWCLOUD-17483](https://jira.atlassian.com/browse/JSWCLOUD-17483), [JSWSERVER-16256](https://jira.atlassian.com/browse/JSWSERVER-16256)) have been sitting at *Gathering Interest* for years. [The full note is on the site](https://sprintname.dev/sprint-names-for-jira). Teams that prefix their sprints (`TEAM-1 Refactor and Pray`) spend part of that budget before the name begins, so the tightest preset leaves room for one.
 
 | Preset | Names available |
 |---|--:|
@@ -74,6 +76,7 @@ index.html        app — markup, styles, generator logic (~600 lines, no depend
 names.js          the corpus — one array per genre
 og.png            social card, 1200×630
 fonts/            self-hosted woff2, latin subset
+content.js        the prose for every generated page
 build.js          assembles dist/ — no dependencies either
 tools/og-card.html   source of og.png, for when the card needs redrawing
 ```
@@ -102,6 +105,10 @@ To change weights, edit the Google Fonts URL in `tools/`, download the latin-sub
 
 A crawler will not press **Convene committee**, so a search engine sees a page whose entire content is the words *No designation issued*. `build.js` fixes that by emitting the corpus a second time as flat HTML at [`/funny-sprint-names`](https://sprintname.dev/funny-sprint-names) — every name, grouped by genre, each one linking back to its deep link in the app.
 
+It now emits twelve pages — the app, the register, one file per genre at `/sprint-names/<genre>`, and a technical note on Jira's character limit at `/sprint-names-for-jira` — plus `sitemap.xml` and `robots.txt`. Everything on them that is a number — counts, totals, "N under 26", the longest name — is computed from `names.js` at build time rather than typed, so none of it can go stale.
+
+Prose lives in [`content.js`](content.js). Nine genre pages generated from one template is the shape search engines file under *doorway* if the only thing that differs is the list, so each genre carries its own argument, its own issue/withhold advisory and its own annotated picks — about 340 words of bespoke copy per page. `build.js` refuses to run if a genre has no entry, or if a pick names something that isn't in that genre.
+
 It also **pre-renders the genre and character-limit chips** into `index.html`. They used to be built by the script at runtime, which meant two rows of buttons appeared after first paint and shoved every section below them down the page — 0.30 of cumulative layout shift, and the single largest CLS contributor the site had. Written into the markup they cost nothing, and the genre labels become indexable text as a side effect. `wireChips()` in the app only attaches handlers to whatever is already there, and falls back to creating the buttons when the page is opened unbuilt from disk.
 
 It has no dependencies and reads the design straight out of `index.html`: the `<style>` block, the `LIMITS` table and the seal are lifted by regex rather than restated, so the register cannot drift from the app it belongs to. Adding a genre to `names.js` adds a section to the register, but it also needs a one-line entry in `BLURBS` — the build fails loudly if you forget, because a page of bare lists is a page Google files under *thin*.
@@ -109,6 +116,8 @@ It has no dependencies and reads the design straight out of `index.html`: the `<
 ```bash
 node build.js     # → dist/, plus dist/manifest.json listing what to upload where
 ```
+
+The sitemap is built from the list of pages that were actually emitted, so it cannot fall out of step with them, and its `<loc>` values are the same strings as each page's own `rel=canonical`. Its `lastmod` comes from `git log` on the build inputs rather than from the clock — stamping today's date on every URL at every build is exactly the pattern that teaches Google to ignore the field. If the history isn't available the date is omitted rather than guessed, which is why the workflow checks out with `fetch-depth: 0`. There is no `<priority>` or `<changefreq>`; Google ignores both.
 
 `dist/` is generated and gitignored. `dist/manifest.json` is what the deploy workflow iterates over, so **adding a page later is a change to `build.js` alone** — the workflow does not need touching.
 
