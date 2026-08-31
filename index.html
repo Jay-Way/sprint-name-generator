@@ -604,6 +604,11 @@ function refresh(){
 
 function showName(text, stamped){
   el.name.className = "name";
+  /* Dropping and re-adding is-stamped in one task does not replay the
+     animation: the engine only recalculates style once, at the end, and
+     never sees the animation go away. Reading a layout property forces
+     that recalculation in between, so every roll gets a fresh stamp. */
+  void el.name.offsetWidth;
   const n = text.length;
   if (n > 40) el.name.classList.add("is-xxlong");
   else if (n > 34) el.name.classList.add("is-xlong");
