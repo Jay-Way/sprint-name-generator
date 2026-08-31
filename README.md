@@ -1,5 +1,8 @@
 # Sprint Name Generator
 
+![Website Screenshot](/og.png?raw=true)
+
+
 A fast, static, slightly unhinged source of genuinely funny sprint names for software teams.
 
 Because naming a sprint should not produce another round of *"Synergy & Innovation"*, *"Customer Centricity"*, or whatever corporate compliance accidentally generated this morning.
