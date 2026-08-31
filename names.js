@@ -1,8 +1,15 @@
 /* ------------------------------------------------------------------
    THE CORPUS — this is the product. Everything else is packaging.
+
+   Each genre also carries `exhausted`: the line the office prints once
+   every name in the genre has been issued. It is written per genre
+   rather than assembled from the label, because the joke has to land in
+   that genre's own voice. build.js refuses to build without one.
 ------------------------------------------------------------------ */
 const GENRES = [
-     { id:"enterprise", label:"Enterprise Sarcasm", accent:"#A61F2B", names:[
+  { id:"enterprise", label:"Enterprise Sarcasm", accent:"#A61F2B",
+    exhausted:"You have exhausted Enterprise Sarcasm. The vocabulary, not the practice.",
+    names:[
     "Refactor and Pray",
     "Tactical Optimism",
     "Ship Happens",
@@ -76,7 +83,9 @@ const GENRES = [
     "Every User Has a Test System"
   ]},
    
-  { id:"despair", label:"Developer Despair", accent:"#1F4E9C", names:[
+  { id:"despair", label:"Developer Despair", accent:"#1F4E9C",
+    exhausted:"The despair is endless. The names for it are not.",
+    names:[
     "Works on My Machine",
     "Git Blame the Other Guy",
     "Not My Branch",
@@ -172,7 +181,9 @@ const GENRES = [
     "Git History Repeats Itself"
   ]},
 
-  { id:"oncall", label:"On-Call Horror", accent:"#33307A", names:[
+  { id:"oncall", label:"On-Call Horror", accent:"#33307A",
+    exhausted:"The register sleeps. You do not.",
+    names:[
     "Three AM Deployment",
     "Escalation Pending",
     "Wake Up, It’s Prod",
@@ -198,7 +209,9 @@ const GENRES = [
     "Friday Deploy Survivor"
   ]},
 
-  { id:"hope", label:"Hope Driven Dev", accent:"#1E6B4F", names:[
+  { id:"hope", label:"Hope Driven Dev", accent:"#1E6B4F",
+    exhausted:"All hope allocated. Confidence remains high.",
+    names:[
     "Optimism Under Review",
     "Hope Driven Development",
     "Confidence Pending",
@@ -247,7 +260,9 @@ const GENRES = [
     "Please Do Not the Code",
   ]},
 
-  { id:"brainrot", label:"Gen Z Brainrot", accent:"#B8007E", names:[
+  { id:"brainrot", label:"Gen Z Brainrot", accent:"#B8007E",
+    exhausted:"Zero names left, based and scrumpilled.",
+    names:[
     "Trigger Warning: Story Points",
     "Agile Goblin Mode",
     "POV: We Actually Finish This",
@@ -326,7 +341,9 @@ const GENRES = [
     "Vibe-Based Architecture"
   ]},
 
-  { id:"bofh", label:"BOFH Excuses", accent:"#8A6B12", names:[
+  { id:"bofh", label:"BOFH Excuses", accent:"#8A6B12",
+    exhausted:"No excuses remain. Try telling them the truth.",
+    names:[
     "Root Dried Out",
     "Woodworms in Hashtable",
     "Cache Fermented",
@@ -389,7 +406,9 @@ const GENRES = [
     "Daemons"
   ]},
 
-  { id:"cult", label:"Corporate Cult", accent:"#14566B", names:[
+  { id:"cult", label:"Corporate Cult", accent:"#14566B",
+    exhausted:"There are no names left. Attendance is still mandatory.",
+    names:[
     "Welcome to the Process",
     "Trust the Framework",
     "The Framework Knows",
@@ -420,7 +439,9 @@ const GENRES = [
     "May The Framework Have Mercy"
   ]},
 
-  { id:"occult", label:"Occult Scrum", accent:"#6A2E7A", names:[
+  { id:"occult", label:"Occult Scrum", accent:"#6A2E7A",
+    exhausted:"The register is empty. But something always lurks in the backlog.",
+    names:[
     "Summoning the Definition of Done",
     "Ritual of the Missing Requirement",
     "The Forbidden Backlog",
@@ -458,7 +479,9 @@ const GENRES = [
     "Nothing Was Committed. Something Was.",
   ]},
 
-  { id:"catastrophe", label:"Catastrophe Theatre", accent:"#A8480F", names:[
+  { id:"catastrophe", label:"Catastrophe Theatre", accent:"#A8480F",
+    exhausted:"Nothing left to name. The catastrophe proceeds unlabelled.",
+    names:[
     "Runtime Error Manifesto",
     "Captain Segfault’s Disappointment",
     "Garbage Collector of Souls",

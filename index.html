@@ -258,6 +258,23 @@ body{
   text-transform:uppercase;
   color:var(--ink-3);
 }
+/* Not a designation — the register is spent and the office is writing in
+   the margin. Every issued name on this site is Archivo Black display type
+   and nothing else is, so dropping that face is the cue that does the work:
+   a short remark like "The register sleeps. You do not." would otherwise
+   read as the next sprint name. Sits after the size tiers to outrank them. */
+.name.is-notice{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:clamp(.95rem,2.3vw,1.3rem);
+  font-weight:500;
+  line-height:1.5;
+  letter-spacing:0;
+  text-transform:none;
+  color:var(--ink-2);
+  max-width:36ch;
+  padding-left:clamp(12px,2.2vw,18px);
+  border-left:3px solid var(--accent);
+}
 .name.is-stamped{animation:stamp .34s cubic-bezier(.16,1.2,.3,1) both}
 @keyframes stamp{
   0%{opacity:0;transform:scale(1.14) translateY(-3px);filter:blur(3px)}
@@ -427,7 +444,7 @@ body{
   <section class="field">
     <div class="field-head">
       <span class="field-label">03 / Designation</span>
-      <span class="readout">Binding on all parties</span>
+      <span class="readout" id="designation-readout">Binding on all parties</span>
     </div>
     <div class="stage">
       <p class="name is-idle" id="name" aria-live="polite">No designation issued</p>
@@ -496,6 +513,7 @@ const el = {
   convene: document.getElementById("convene"),
   copy: document.getElementById("copy"),
   reset: document.getElementById("reset"),
+  designationReadout: document.getElementById("designation-readout"),
   corpus: document.getElementById("corpus")
 };
 
@@ -600,6 +618,10 @@ function refresh(){
     m === "ready"  ? ESCALATION[Math.min(presses, ESCALATION.length - 1)] :
     m === "raise"  ? "Raise the limit" :
                      "Reopen the register";
+  /* Restores the default; the exhaustion notice overrides it below. The
+     meta row already warns "Register exhausted" once the last name is out,
+     so reporting it here as well would print the same words twice. */
+  el.designationReadout.textContent = "Binding on all parties";
 }
 
 function showName(text, stamped){
@@ -655,17 +677,21 @@ async function convene(){
   if (busy) return;
 
   if (mode() === "reopen"){
-    const spent = genre.label;
     const all = store();
     delete all[genre.id];
     save(all);
     presses = 0;
     current = null;
     el.copy.disabled = true;
-    showName("You have exhausted " + spent + ". So has your team.", false);
+    showName(genre.exhausted, false);
+    el.name.classList.add("is-notice");
     el.meta.innerHTML = '<span class="m-genre">Register reopened</span>' +
                         '<span>The committee remembers <b>nothing</b></span>';
     refresh();
+    /* After refresh(), which has already seen the register emptied and would
+       otherwise report business as usual. The field head names the condition,
+       the notice comments on it, the meta line reports what was done. */
+    el.designationReadout.textContent = "Register exhausted";
     return;
   }
 

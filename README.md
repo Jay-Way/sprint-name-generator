@@ -129,7 +129,9 @@ The sitemap is built from the list of pages that were actually emitted, so it ca
 Append to the relevant array in `names.js`:
 
 ```js
-{ id:"oncall", label:"On-Call Horror", accent:"#33307A", names:[
+{ id:"oncall", label:"On-Call Horror", accent:"#33307A",
+  exhausted:"The register sleeps. You do not.",
+  names:[
   "Three AM Deployment",
   "Production Knows Where You Sleep",
   "Your name here"
@@ -148,7 +150,7 @@ The bar for inclusion: a name earns its place by being either **uncomfortably ac
 
 ### Adding a genre
 
-Add an object with a unique `id`, a `label`, and an `accent` — an institutional ink distinct from the nine already in use. The UI picks it up automatically; the accent tints the whole page when that genre is selected.
+Add an object with a unique `id`, a `label`, an `accent` — an institutional ink distinct from the nine already in use — and an `exhausted` line, printed when a team has issued every name in the genre. Write that line in the genre's own voice rather than deriving it from the label; the whole point is that it lands differently for On-Call Horror than for Hope Driven Dev. `build.js` refuses to build a genre that has none, because the alternative is showing `undefined` to the one visitor who read all the way to the end of a genre. The UI picks it up automatically; the accent tints the whole page when that genre is selected.
 
 ## Deployment
 

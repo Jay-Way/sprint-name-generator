@@ -83,6 +83,11 @@ const genreUrl = g => "/sprint-names/" + slug(g.label);
    under "doorway page". */
 for (const g of GENRES) {
   if (!BLURBS[g.id]) throw new Error("build: genre '" + g.id + "' has no blurb in content.js");
+  /* Runtime copy rather than page copy, but it fails the same way if it is
+     missing: index.html would print "undefined" to anyone who worked their
+     way through a whole genre, which is the least deserving audience for it. */
+  if (!g.exhausted) throw new Error(
+    "build: genre '" + g.id + "' has no exhausted line in names.js");
   const page = GENRE_PAGES[g.id];
   if (!page) throw new Error("build: genre '" + g.id + "' has no GENRE_PAGES entry in content.js");
   for (const [name] of page.picks) {
