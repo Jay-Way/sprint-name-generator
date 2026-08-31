@@ -39,14 +39,16 @@ No backend, no accounts, no tracking, no network requests after page load. Nothi
 
 ## Character limits
 
-Jira caps sprint names at **30 characters**. Teams that prefix their sprints (`TEAM-1 Rebase and Weep`) spend part of that budget before the name begins, so the tightest preset leaves room for one.
+Jira caps sprint names at **30 characters**. Teams that prefix their sprints (`TEAM-1 Refactor and Pray`) spend part of that budget before the name begins, so the tightest preset leaves room for one.
 
 | Preset | Names available |
 |---|--:|
-| No limit | 536 |
-| ≤ 40 | 535 |
-| ≤ 30 — Jira's actual cap | 486 |
-| ≤ 26 — room for a short prefix | 419 |
+| No limit | 447 |
+| ≤ 40 | 447 |
+| ≤ 30 — Jira's actual cap | 417 |
+| ≤ 26 — room for a short prefix | 372 |
+
+`≤ 40` currently excludes nothing — the longest name on file is exactly 40 characters. It stays as a guard rail for names not yet written.
 
 Your choice persists between visits. When a filtered pool runs dry but longer names remain unissued, the main button becomes **Raise the limit** and steps out one notch — it won't silently strand you with nothing to press.
 
@@ -56,17 +58,16 @@ If your prefix is longer than four characters, adjust the tightest preset in `LI
 
 | Genre | Names | ≤ 30 | ≤ 26 |
 |---|--:|--:|--:|
-| Developer Despair | 103 | 100 | 98 |
-| Gen Z Brainrot | 89 | 85 | 70 |
-| BOFH Excuses | 78 | 65 | 48 |
-| Enterprise Sarcasm | 72 | 72 | 68 |
-| Hope Driven Dev | 55 | 55 | 52 |
-| Occult Scrum | 41 | 30 | 22 |
-| Corporate Cult | 27 | 23 | 16 |
-| On-Call Horror | 25 | 24 | 23 |
-| Catastrophe Theatre | 25 | 15 | 10 |
-| Unclassified | 21 | 17 | 12 |
-| **Total** | **536** | **486** | **419** |
+| Developer Despair | 93 | 90 | 88 |
+| Gen Z Brainrot | 76 | 73 | 62 |
+| Enterprise Sarcasm | 71 | 71 | 67 |
+| BOFH Excuses | 60 | 52 | 44 |
+| Hope Driven Dev | 46 | 46 | 42 |
+| Occult Scrum | 35 | 28 | 21 |
+| Corporate Cult | 28 | 25 | 18 |
+| On-Call Horror | 23 | 22 | 22 |
+| Catastrophe Theatre | 15 | 10 | 8 |
+| **Total** | **447** | **417** | **372** |
 
 ## Project structure
 
@@ -94,12 +95,12 @@ Append to the relevant array in `names.js`:
 House rules, so the corpus stays coherent:
 
 - **Title Case, with small words lowercase** — `Woodworms in Hashtable`, not `Woodworms In Hashtable`
-- **Acronyms and identifiers keep their casing** — `DNS Went Stale`, `node_modules Reached Critical Density`
+- **Acronyms and identifiers keep their casing** — `Must Be DNS`, `node_modules Reached Critical Density`
 - **Typographic apostrophes** (`’`, not `'`) — they're set at display size and it shows
 - **Under ~42 characters.** Longer still renders, at the smallest tier, but it stops being a sprint name and starts being a sentence
 - **No duplicates across genres.** A name belongs to exactly one
 
-The bar for inclusion: a name earns its place by being either **technically specific** (`Woodworms in Hashtable`) or **tonally deranged** (`The Stakeholder Is In The Room With Us`). Merely mild office humour is the failure mode this project exists to escape.
+The bar for inclusion: a name earns its place by being either **technically specific** (`Woodworms in Hashtable`) or **tonally deranged** (`The Scrum Master Has No Reflection`). Merely mild office humour is the failure mode this project exists to escape.
 
 ### Adding a genre
 
