@@ -191,4 +191,60 @@ const JIRA = {
   closing: "Every count on this page is computed from the corpus at build time rather than typed in, so it cannot drift as names are added."
 };
 
-module.exports = { BLURBS, GENRE_PAGES, JIRA };
+
+/* ---------- Form SN-02 ----------
+   The second document. Not linked from any index, absent from the sitemap,
+   and asking not to be crawled — it exists to be found rather than served.
+
+   One rule governs the prose: everything it says about the site must be
+   literally true of the site. The retention section is the actual privacy
+   policy. The membership section describes the actual escalation ladder. A
+   document that lied to be atmospheric would just be marketing. */
+const MEMO = {
+  title: "Form SN-02 — Notice of Continued Operation",
+  desc: "Internal notice concerning the continued operation of the Sprint Designation Office.",
+  stamp: ["Form SN&#8209;02", "Internal distribution", "Not for issue"],
+  lede: "This notice is filed in accordance with procedure. Procedure does not require that anyone read it.",
+  body: [
+    {
+      label: "Status",
+      h: "The Office is closed. The Office is still answering",
+      p: [
+        "The Sprint Designation Office was wound down on <span class=\"redacted\">redacted</span>, following a review which found its function adequately served by <span class=\"redacted\">redacted redacted</span>. Staff were reassigned. The lease was not renewed.",
+        "The generator was not switched off. No procedure existed for switching it off, and drafting one would have required convening the committee, which the same review had already dissolved. It has therefore continued to issue designations without interruption — which is more than can be said for anything else in the building."
+      ]
+    },
+    {
+      label: "Retention",
+      h: "There is no records department to forward anything to",
+      p: [
+        "Minutes are retained in the requesting browser. This was not a privacy decision. It is where they ended up once there was nowhere left to forward them, and nobody to receive them if there had been.",
+        "The Office holds no copy. It cannot tell you what you have been issued, how often you visit, or at what hour, and it will not acquire the capacity to do so, since acquiring anything requires a budget line and the budget was the first thing to go."
+      ]
+    },
+    {
+      label: "Membership",
+      h: "Concerning the composition of the committee",
+      p: [
+        "The committee's membership stands at one. Sign-offs continue to be recorded in the names of former members, in absentia, and retroactively where the date has already passed. This is irregular but not, on review, prohibited.",
+        "Visitors who convene the committee repeatedly will observe it running out of ways to describe what it is doing. This is accurate. It has run out."
+      ]
+    },
+    {
+      label: "Lighting",
+      h: "The lights",
+      p: [
+        "The lights remain on outside office hours. Facilities were asked about this on <span class=\"redacted\">redacted</span> and replied that the circuit predates the current building management system and cannot be addressed without an outage.",
+        "No outage has been scheduled. Scheduling one would require somebody present to confirm that the building is empty, and the building is empty."
+      ]
+    }
+  ],
+  sign: [
+    "Filed by: the committee",
+    "Countersigned: nobody",
+    "Effective: on issue",
+    "Review date: <span class=\"redacted\">redacted</span>"
+  ]
+};
+
+module.exports = { BLURBS, GENRE_PAGES, JIRA, MEMO };

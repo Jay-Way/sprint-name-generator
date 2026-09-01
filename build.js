@@ -16,7 +16,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
-const { BLURBS, GENRE_PAGES, JIRA } = require("./content.js");
+const { BLURBS, GENRE_PAGES, JIRA, MEMO } = require("./content.js");
 
 const ORIGIN = "https://sprintname.dev";
 const OUT = path.join(__dirname, "dist");
@@ -264,7 +264,30 @@ code{
   text-decoration:none;
   transition:background .18s ease,color .18s ease,border-color .18s ease;
 }
-.cta:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}`;
+.cta:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+/* ---------- Form SN-02 only ---------- */
+/* A bar, not a deletion: the word underneath stays in the markup and stays
+   reachable by a screen reader, which is the honest way to redact a joke. */
+.redacted{
+  background:var(--ink);
+  color:transparent;
+  padding:0 .12em;
+  border-radius:1px;
+  user-select:none;
+}
+.signblock{
+  margin:0;
+  padding:0;
+  list-style:none;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.72rem;
+  letter-spacing:.06em;
+  line-height:2.1;
+  color:var(--ink-2);
+}
+.signblock li{border-bottom:1px dotted var(--rule);padding:2px 0}
+.signblock li:last-child{border-bottom:0}`;
 
 /* ---------- shared page furniture ---------- */
 
@@ -304,7 +327,7 @@ function genreNav(current) {
     .join("\n") + "\n    </nav>";
 }
 
-function shell({ title, desc, url, stamp, ogType = "article", jsonLd = [], accent, body }) {
+function shell({ title, desc, url, stamp, ogType = "article", robotsMeta = "index, follow, max-image-preview:large", jsonLd = [], accent, body }) {
   const ld = jsonLd.map(o =>
     '<script type="application/ld+json">\n' + JSON.stringify(o, null, 2) + "\n</script>").join("\n");
   return `<!doctype html>
@@ -315,7 +338,7 @@ function shell({ title, desc, url, stamp, ogType = "article", jsonLd = [], accen
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${ORIGIN}${url}">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="${robotsMeta}">
 <meta name="theme-color" content="#E4E2D9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111310" media="(prefers-color-scheme: dark)">
 <meta property="og:type" content="${ogType}">
@@ -604,6 +627,53 @@ ${GENRES.map(g => `        <tr><td><a href="${genreUrl(g)}">${esc(g.label)}</a><
   </section>`
 });
 
+/* ---------- Form SN-02 ----------
+   Deliberately thin on machinery. No JSON-LD, because it asks not to be
+   indexed; no genre nav, because it is not part of the register. It is one
+   internal document that happens to be reachable. */
+
+const MEMO_URL = "/form-sn-02";
+
+const memoPage = shell({
+  title: MEMO.title,
+  desc: MEMO.desc,
+  url: MEMO_URL,
+  robotsMeta: "noindex, nofollow",
+  stamp: MEMO.stamp,
+  body: `  <section class="field">
+    <div class="field-head">
+      <span class="field-label">00 / Notice</span>
+      <span class="readout">Internal distribution</span>
+    </div>
+    ${crumbs([
+      { label: "Generator", url: "/" },
+      { label: "Form SN-02" }
+    ])}
+    <h1 class="page-title">Notice of Continued Operation</h1>
+    <p class="lede">${MEMO.lede}</p>
+  </section>
+
+${MEMO.body.map((s, i) => `  <section class="field section">
+    <div class="field-head">
+      <span class="field-label">0${i + 1} / ${esc(s.label)}</span>
+      <span class="readout">&nbsp;</span>
+    </div>
+    <h2>${esc(s.h)}</h2>
+${s.p.map(p => '    <p class="blurb">' + p + "</p>").join("\n")}
+  </section>`).join("\n\n")}
+
+  <section class="field">
+    <div class="field-head">
+      <span class="field-label">0${MEMO.body.length + 1} / Signatures</span>
+      <span class="readout">&nbsp;</span>
+    </div>
+    <ul class="signblock">
+${MEMO.sign.map(s => "      <li>" + s + "</li>").join("\n")}
+    </ul>
+    <a class="cta" href="/">Return to the form</a>
+  </section>`
+});
+
 /* ---------- index.html adjustments ---------- */
 
 /* The chips are the page's only JS-built markup above the fold, and building
@@ -726,6 +796,8 @@ const files = [
   { key: "names.js", body: namesJs, contentType: "text/javascript; charset=utf-8", cacheControl: SHORT },
   page(REGISTER_URL, registerPage),
   page(JIRA_URL, jiraPage),
+  /* Absent from the sitemap by way of unlisted, but still uploaded. */
+  { ...page(MEMO_URL, memoPage), unlisted: true },
   ...GENRES.map(g => page(genreUrl(g), genrePage(g))),
   { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
   ...FONTS.map(f => ({
@@ -738,7 +810,9 @@ const files = [
 
 /* Appended after the fact so the sitemap lists exactly the pages that were
    actually emitted, and can never fall out of step with them. */
-const pageKeys = files.filter(f => f.contentType.startsWith("text/html")).map(f => f.key);
+const pageKeys = files
+  .filter(f => f.contentType.startsWith("text/html") && !f.unlisted)
+  .map(f => f.key);
 files.push(
   { key: "sitemap.xml", body: sitemap(pageKeys), contentType: "application/xml; charset=utf-8", cacheControl: SHORT },
   { key: "robots.txt", body: robots, contentType: "text/plain; charset=utf-8", cacheControl: SHORT }

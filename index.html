@@ -1,10 +1,30 @@
 <!doctype html>
+<!--
+  You found the source. There is not much to it, which is the point.
+
+  The Office keeps no record of who requisitions designations, or how often,
+  or at what hour. This was a budget decision rather than a principle, but
+  the effect is the same. Everything this site knows about you is in your own
+  localStorage, under the keys beginning sng. You may read it. You may delete
+  it. There is no copy anywhere else, because there is nowhere else.
+
+  Two files do the work: index.html and names.js. If you have a name worth
+  adding, the corpus is in the second one and the house rules are in the
+  README. The bar is that a name be either technically specific or tonally
+  deranged. Merely mild office humour is the thing we are all escaping.
+
+  Filed alongside this form, and listed in no index: /form-sn-02
+
+                             Sprint Designation Office
+                             Records and Retention
+                             (unstaffed)
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprint Name Generator — 447 Funny Sprint Names</title>
-<meta name="description" content="A curated generator of genuinely funny sprint names — 447 across nine genres, filtered to the Jira character limit. No AI slop, no random movie titles.">
+<meta name="description" content="A curated generator of genuinely funny sprint names - 447 across nine genres, filtered to the Jira character limit. No AI slop, no random movie titles.">
 <link rel="canonical" href="https://sprintname.dev/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#E4E2D9" media="(prefers-color-scheme: light)">
@@ -15,15 +35,15 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sprint Designation Office">
 <meta property="og:url" content="https://sprintname.dev/">
-<meta property="og:title" content="Sprint Name Generator — 447 Funny Sprint Names">
+<meta property="og:title" content="Sprint Name Generator - 447 Funny Sprint Names">
 <meta property="og:description" content="Nine genres of sprint name, from Enterprise Sarcasm to Occult Scrum. Curated, not generated. Filterable to the Jira character limit.">
 <meta property="og:image" content="https://sprintname.dev/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Sprint Designation Office — the sprint name &quot;Refactor and Pray&quot; stamped on an official form.">
+<meta property="og:image:alt" content="Sprint Designation Office - the sprint name &quot;Refactor and Pray&quot; stamped on an official form.">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Sprint Name Generator — 447 Funny Sprint Names">
+<meta name="twitter:title" content="Sprint Name Generator - 447 Funny Sprint Names">
 <meta name="twitter:description" content="Nine genres of sprint name, from Enterprise Sarcasm to Occult Scrum. Curated, not generated. Filterable to the Jira character limit.">
 <meta name="twitter:image" content="https://sprintname.dev/og.png">
 <!-- Seal of the office. Inline, so the site stays two files. -->
@@ -176,6 +196,9 @@ body{
   line-height:1.7;
   font-variant-numeric:tabular-nums;
 }
+/* Rendered only outside office hours - see officeShift(). Takes the genre's
+   ink, so the notice reads as part of the same form as everything else. */
+.unstaffed{color:var(--accent);transition:color .3s ease}
 
 /* ---------- shared field chrome ---------- */
 .field{padding:clamp(16px,3vw,24px) clamp(18px,3.5vw,34px)}
@@ -418,7 +441,7 @@ body{
 
   <header class="masthead">
     <h1 class="wordmark">Sprint<br>Designation <em>Office</em></h1>
-    <div class="stamp-no">
+    <div class="stamp-no" id="stamp">
       Form SN&#8209;01<br>
       Issued under protest<br>
       Rev. 4 &#183; Supersedes all
@@ -535,7 +558,7 @@ const ESCALATION = [
   "Convene yourself",
   "You are the quorum",
   "You are the committee",
-  "The commitee is you",
+  "The committee is you",
   "Proceed as sole authority",   
   /* VI. Only despair left. */
   "Consult the forbidden archive",
@@ -551,6 +574,22 @@ const SEEN_KEY = "sng.seen.v1";
 const LIMIT_KEY = "sng.limit.v1";
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/* ---------- office hours ----------
+   The Office is staffed 09:00-17:00 on weekdays. The site is not: it answers
+   at any hour, out of a building nobody is in. Read from the visitor's own
+   clock rather than the server's, so a copy of this page cached for five
+   minutes still tells the truth about the time. */
+const OFFICE_OPENS = 9;
+const OFFICE_SHUTS = 17;
+
+function officeShift(){
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) return "weekend";
+  const h = now.getHours();
+  return (h < OFFICE_OPENS || h >= OFFICE_SHUTS) ? "night" : null;
+}
+
 const el = {
   genreChips: document.getElementById("genre-chips"),
   limitChips: document.getElementById("limit-chips"),
@@ -563,7 +602,8 @@ const el = {
   copy: document.getElementById("copy"),
   reset: document.getElementById("reset"),
   designationReadout: document.getElementById("designation-readout"),
-  corpus: document.getElementById("corpus")
+  corpus: document.getElementById("corpus"),
+  stamp: document.getElementById("stamp")
 };
 
 let genre = GENRES[0];
@@ -707,6 +747,9 @@ async function runCommittee(){
 
   const steps = PROCEDURE.slice().sort(() => Math.random() - .5).slice(0, 4);
   steps.push("Approved without discussion");
+  /* After hours the log gains one line before the sign-off it is somehow
+     still getting. Nobody is here to convene; the procedure runs anyway. */
+  if (officeShift()) steps.splice(steps.length - 1, 0, "Waiting for someone to return");
 
   const gap = reduced ? 70 : 185;
   for (let i = 0; i < steps.length; i++){
@@ -816,9 +859,20 @@ el.reset.addEventListener("click", () => {
   refresh();
 });
 
+
+/* The letterhead is the only part of the form that admits what time it is. */
+const outside = officeShift();
+if (outside) {
+  el.stamp.insertAdjacentHTML("beforeend",
+    '<br><span class="unstaffed">' +
+    (outside === "weekend" ? "Closed until Monday" : "Currently unstaffed") +
+    "</span>");
+}
+
 buildChips();
 loadLimit();
 if (!fromHash()) refresh();
+
 </script>
 </body>
 </html>
