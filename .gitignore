@@ -2,3 +2,7 @@
 # and og.png by build.js — see README → Project structure.
 dist/
 .idea
+
+# Pulled in only to run ESLint. Nothing here ships.
+node_modules/
+package-lock.json
