@@ -496,7 +496,56 @@ const PROCEDURE = [
 ];
 
 const SIGNATORIES = ["nobody","Klaus","the committee","a majority of one","absentia","retroactively","no one present"];
-const ESCALATION = ["Convene committee","Convene again","Reconvene","Once more","Escalate","Escalate further","This is fine","Ship something"];
+const ESCALATION = [
+  /* I. Procedure, functioning as designed. */
+  "Convene committee",
+  "Convene again",
+  "Reconvene",
+  "Try Again",
+  "One final time",
+  "Last attempt",
+  "Once more",
+  "Proceed with caution",   
+  "Escalate",
+  "Escalate further",
+  "Request clarification",
+  "Request further clarification",
+  /* II. Procedure, no longer helping. */
+  "This is fine",
+  "Ship something",
+  "Ship anything",
+  "Ship and apologize",   
+  "Approve unread",
+  "Forge the signature",
+  "Dissolve the committee",
+  "Proceed without approval",   
+  /* III. The office empties. Nobody turned anything off. */
+  "Continue unattended",
+  "Quorum not required",
+  "The building is closed",
+  "The lights stay on",
+  "Still here?",
+  "Proceed after hours",
+  "Assume responsibility",
+  /* IV. The record, still being kept. */
+  "This is being minuted",
+  "Do not shred these",
+  /* V. There is only one member left. */
+  "No one left to convene",
+  "Convene yourself",
+  "You are the quorum",
+  "You are the committee",
+  "The commitee is you"   
+  "Proceed as sole authority",   
+  /* VI. Only despair left. */
+  "Consult the forbidden archive",
+  "Accept reality",
+  "Ignore the anomaly",
+  "Procedure exhausted",
+  "Further escalation unavailable",
+  "This incident will be reported",
+  "The Office recommends acceptance",
+];
 
 const SEEN_KEY = "sng.seen.v1";
 const LIMIT_KEY = "sng.limit.v1";
@@ -582,7 +631,7 @@ function wireChips(host, labels, onPick){
 
 function buildChips(){
   wireChips(el.genreChips, GENRES.map(g => g.label),
-    i => { genre = GENRES[i]; presses = 0; refresh(); });
+    i => { genre = GENRES[i]; refresh(); });
   wireChips(el.limitChips, LIMITS.map(l => l.label),
     i => { limitIdx = i; saveLimit(); refresh(); });
   const total = GENRES.reduce((n, g) => n + g.names.length, 0);
