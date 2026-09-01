@@ -23,7 +23,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sprint Name Generator — 447 Funny Sprint Names</title>
+<title>Sprint Name Generator - 447 Funny Sprint Names</title>
 <meta name="description" content="A curated generator of genuinely funny sprint names - 447 across nine genres, filtered to the Jira character limit. No AI slop, no random movie titles.">
 <link rel="canonical" href="https://sprintname.dev/">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -281,7 +281,7 @@ body{
   text-transform:uppercase;
   color:var(--ink-3);
 }
-/* Not a designation — the register is spent and the office is writing in
+/* Not a designation - the register is spent and the office is writing in
    the margin. Every issued name on this site is Archivo Black display type
    and nothing else is, so dropping that face is the cue that does the work:
    a short remark like "The register sleeps. You do not." would otherwise
@@ -651,7 +651,7 @@ function mode(){
 
 /* Attach a handler to each chip, creating it only if it isn't there already.
    build.js writes the chips into the shipped HTML, so on the deployed site
-   this only wires them up and the page never reflows — building them here was
+   this only wires them up and the page never reflows - building them here was
    worth 0.30 of cumulative layout shift, because two rows of chips appearing
    after the script ran pushed every section below them down. Opened straight
    from disk there is no build, so the elements still get created. */
@@ -787,7 +787,7 @@ async function convene(){
     return;
   }
 
-  /* Nothing short enough left, but longer names are still unissued —
+  /* Nothing short enough left, but longer names are still unissued -
      step the limit out until something is available, then proceed. */
   if (mode() === "raise"){
     while (limitIdx > 0 && !remaining().length) limitIdx--;
