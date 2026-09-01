@@ -702,8 +702,8 @@ function renderChips(html) {
    Each pattern must match: a silent miss would defeat the point. */
 function syncCount(html) {
   const patterns = [
-    [/(<title>Sprint Name Generator — )\d+( Funny Sprint Names<\/title>)/, "title"],
-    [/(funny sprint names — )\d+( across nine genres)/, "description"],
+    [/(<title>Sprint Name Generator - )\d+( Funny Sprint Names<\/title>)/, "title"],
+    [/(funny sprint names - )\d+( across nine genres)/, "description"],
     [/(A curated generator of )\d+( funny sprint names)/, "JSON-LD description"],
     [/(<span id="corpus">)\d+(<\/span>)/, "footer count"]
   ];
@@ -721,20 +721,20 @@ function syncCount(html) {
 }
 
 if (GENRES.length !== 9) {
-  console.warn("  ! " + GENRES.length + " genres, but the copy still says \"nine\" — "
+  console.warn("  ! " + GENRES.length + " genres, but the copy still says \"nine\" - "
     + "check index.html's description and the register preamble.");
 }
 
 /* ---------- sitemap and robots ----------
 
-   Every generated page has the same dependency set — the corpus, the prose,
-   the template and the style block — so they genuinely are all regenerated
+   Every generated page has the same dependency set - the corpus, the prose,
+   the template and the style block - so they genuinely are all regenerated
    together, and one lastmod across the whole sitemap is the honest answer
    rather than a convenient one.
 
    It comes from git rather than the clock: stamping today's date on every URL
    at every build is the pattern that teaches Google to ignore the field. If
-   the history isn't there (a shallow CI clone), lastmod is omitted entirely —
+   the history isn't there (a shallow CI clone), lastmod is omitted entirely -
    no date beats a wrong one. The workflow checks out with fetch-depth: 0 so
    that this works.
 
@@ -760,7 +760,7 @@ const pageUrl = key => ORIGIN + (key === "index.html" ? "/" : "/" + key);
 
 function sitemap(pageKeys) {
   const mod = lastModified();
-  if (!mod) console.warn("  ! no git history for the build inputs — sitemap omits <lastmod>");
+  if (!mod) console.warn("  ! no git history for the build inputs - sitemap omits <lastmod>");
   return '<?xml version="1.0" encoding="UTF-8"?>\n'
     + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + pageKeys.map(k => "  <url>\n    <loc>" + esc(pageUrl(k)) + "</loc>\n"
@@ -835,6 +835,6 @@ fs.writeFileSync(
 for (const f of files) {
   console.log("  " + f.key.padEnd(36) + String(Math.round(Buffer.byteLength(f.body) / 1024)).padStart(4) + " KB");
 }
-console.log("\ndist/ built — "
+console.log("\ndist/ built - "
   + files.filter(f => f.contentType.startsWith("text/html")).length + " pages, "
   + total + " names across " + GENRES.length + " genres");
