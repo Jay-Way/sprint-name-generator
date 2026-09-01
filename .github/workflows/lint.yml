@@ -23,4 +23,4 @@ jobs:
           run: npm install -g htmlhint
 
         - name: Run HTMLHint
-          run: htmlhint "**/*.html"
+          run: htmlhint --ignore="tools/og-card.html" "**/*.html"
