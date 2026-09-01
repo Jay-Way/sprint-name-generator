@@ -1,4 +1,4 @@
-name: Lint HTML
+name: Lint
 
 on:
   push:
@@ -24,3 +24,28 @@ jobs:
 
         - name: Run HTMLHint
           run: htmlhint --ignore="tools/og-card.html" "**/*.html"
+
+    eslint:
+      name: Lint JS
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: 'lts/*'
+
+        # Installed locally rather than with -g, unlike HTMLHint above:
+        # eslint.config.mjs imports @eslint/js and globals, and a config
+        # can only resolve those from the repo's own node_modules.
+        # --no-save because there is no package.json to write to, and
+        # this project intends to keep it that way. eslint is pinned to
+        # its major: flat config is a v9 shape, and v10 should be a
+        # deliberate upgrade rather than a Tuesday morning surprise.
+        - name: Install ESLint
+          run: npm install --no-save eslint@^9 @eslint/js@^9 globals
+
+        - name: Run ESLint
+          run: npx eslint .
