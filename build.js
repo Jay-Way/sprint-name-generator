@@ -749,6 +749,8 @@ function lastModified() {
       .filter(Boolean);
     return dates.length ? dates.sort().pop() : null;
   } catch (e) {
+    console.error(e);
+  }
     return null;                       // not a git checkout, or no history
   }
 }
