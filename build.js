@@ -748,7 +748,7 @@ function lastModified() {
         { cwd: __dirname, stdio: ["ignore", "pipe", "ignore"] }).toString().trim())
       .filter(Boolean);
     return dates.length ? dates.sort().pop() : null;
-  } catch (e) {
+  } catch {
     return null;                       // not a git checkout, or no history
   }
 }
