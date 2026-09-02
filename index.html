@@ -378,6 +378,32 @@ body{
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* ---------- fine print ---------- */
+/* The seal is the only navigation this form admits to having. Both links
+   go to filing rather than to names, so they are marked as links only
+   under the cursor - the stamp has to read as a stamp first. */
+.stamp-no a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--rule)}
+.stamp-no a:hover{color:var(--accent);border-bottom-color:currentColor}
+
+/* The Office holds no copy of anything - see Form SN-02. This is the
+   visitor's own record, read back to them out of the browser it never
+   left. Written into the markup with its idle values already in place:
+   three lines that appear after first paint would shove the footer down
+   the page, which is the mistake the chips were built to stop making. */
+.record{
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 22px;
+  margin:0;
+  padding:0 clamp(18px,3.5vw,34px) clamp(16px,2.6vw,22px);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.62rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.record b{color:var(--ink-2);font-weight:500}
 .fineprint{
   display:flex;
   flex-wrap:wrap;
@@ -442,9 +468,9 @@ body{
   <header class="masthead">
     <h1 class="wordmark">Sprint<br>Designation <em>Office</em></h1>
     <div class="stamp-no" id="stamp">
-      Form SN&#8209;01<br>
+      <a href="/administrative-documents">Form SN&#8209;01</a><br>
       Issued under protest<br>
-      Rev. 4 &#183; Supersedes all
+      <a href="/revision-history">Rev. 4</a> &#183; Supersedes all
     </div>
   </header>
 
@@ -480,6 +506,12 @@ body{
     <button class="btn" id="convene">Convene committee</button>
     <button class="btn btn--ghost" id="copy" disabled>Copy</button>
   </div>
+
+  <ul class="record" id="record">
+    <li>Local record: <b id="rec-count">no designations issued</b></li>
+    <li>First entry: <b id="rec-first">not recorded</b></li>
+    <li>Last review: <b id="rec-last">not recorded</b></li>
+  </ul>
 
   <footer class="fineprint">
     <a class="reglink" href="/funny-sprint-names">All <span id="corpus">447</span> sprint names on file</a>
@@ -572,6 +604,10 @@ const ESCALATION = [
 
 const SEEN_KEY = "sng.seen.v1";
 const LIMIT_KEY = "sng.limit.v1";
+/* Dates only. The names are already in SEEN_KEY; this is the pair of
+   timestamps that turns a list into a record, kept separately so that
+   shredding one shreds the other and neither can outlive the other. */
+const RECORD_KEY = "sng.record.v1";
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- office hours ----------
@@ -603,7 +639,10 @@ const el = {
   reset: document.getElementById("reset"),
   designationReadout: document.getElementById("designation-readout"),
   corpus: document.getElementById("corpus"),
-  stamp: document.getElementById("stamp")
+  stamp: document.getElementById("stamp"),
+  recCount: document.getElementById("rec-count"),
+  recFirst: document.getElementById("rec-first"),
+  recLast: document.getElementById("rec-last")
 };
 
 let genre = GENRES[0];
@@ -630,6 +669,43 @@ function markSeen(name){
   if (!list.includes(name)) list.push(name);
   all[genre.id] = list;
   save(all);
+  stampRecord();
+}
+
+/* ---------- the local record ----------
+   Two dates and a count, none of which leave the browser. A record begun
+   before this shipped has no opening date and says so: inventing one from
+   the first name in the list would be the first thing this office ever
+   made up about a visitor. */
+function record(){
+  try { return JSON.parse(localStorage.getItem(RECORD_KEY)) || {}; } catch (e) { return {}; }
+}
+function stampRecord(){
+  const r = record();
+  const now = Date.now();
+  if (!r.first) r.first = now;
+  r.last = now;
+  try { localStorage.setItem(RECORD_KEY, JSON.stringify(r)); } catch (e) {}
+}
+
+/* Written out rather than localised: the rest of the form is dated in the
+   office's own hand, and a form that switches date formats by locale is a
+   form filled in by two different people. */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function filed(ts){
+  const d = new Date(ts);
+  return String(d.getDate()).padStart(2,"0") + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+
+function showRecord(){
+  const all = store();
+  const n = Object.keys(all).reduce((t, k) => t + all[k].length, 0);
+  const r = record();
+  el.recCount.textContent = n
+    ? n + (n === 1 ? " designation" : " designations")
+    : "no designations issued";
+  el.recFirst.textContent = r.first ? filed(r.first) : "not recorded";
+  el.recLast.textContent = r.last ? filed(r.last) : "not recorded";
 }
 
 /* Names in this genre that fit the current character limit. */
@@ -711,6 +787,7 @@ function refresh(){
      meta row already warns "Register exhausted" once the last name is out,
      so reporting it here as well would print the same words twice. */
   el.designationReadout.textContent = "Binding on all parties";
+  showRecord();
 }
 
 function showName(text, stamped){
@@ -854,7 +931,7 @@ el.copy.addEventListener("click", async () => {
 });
 
 el.reset.addEventListener("click", () => {
-  try { localStorage.removeItem(SEEN_KEY); } catch (e) {}
+  try { localStorage.removeItem(SEEN_KEY); localStorage.removeItem(RECORD_KEY); } catch (e) {}
   presses = 0;
   refresh();
 });

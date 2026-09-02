@@ -247,4 +247,129 @@ const MEMO = {
   ]
 };
 
-module.exports = { BLURBS, GENRE_PAGES, JIRA, MEMO };
+/* ------------------------------------------------------------------
+   Form SN-01, revisions. The masthead has claimed "Rev. 4 - Supersedes
+   all" since the first commit; this is the file that claim implies.
+   Two of the four survive, which is the joke: an office that supersedes
+   everything has nothing left to compare against.
+------------------------------------------------------------------ */
+const REVISIONS = {
+  title: "Form SN-01 - Revision History",
+  desc: "Revision history of Form SN-01, the sprint designation request form of the Sprint Designation Office.",
+  stamp: ["Form SN&#8209;01", "Revision history", "Rev. 4 &#183; Current"],
+  lede: "Every form carries its revisions. This one carries four, of which two remain in a state anybody can describe.",
+  entries: [
+    {
+      rev: "Rev. 4",
+      status: "Current",
+      state: "current",
+      effective: "Effective: on issue",
+      p: "Adds the character-limit filter, on the grounds that a designation nobody can enter into their tracker has not, in any useful sense, been issued. Adopted over one objection, which was minuted and then deferred to a quarter that has not arrived. Supersedes all, rather than only Rev. 3, for the reason given under Rev. 2."
+    },
+    {
+      rev: "Rev. 3",
+      status: "Withdrawn",
+      state: "withdrawn",
+      effective: "In force: nine days",
+      p: "Required the requesting team to state, in advance and in writing, what the sprint would achieve. Submissions received: none. The form was withdrawn on the ninth day, and the committee resolved not to record whose idea it had been."
+    },
+    {
+      rev: "Rev. 2",
+      status: "Superseded",
+      state: "superseded",
+      effective: "Effective: <span class=\"redacted\">redacted</span>",
+      p: "Superseded by Rev. 3, which was withdrawn. Nothing was drafted to take its place, so Rev. 4 was written against Rev. 2 and supersedes all rather than only its predecessor. This is irregular. It is also the only arrangement under which the form works."
+    },
+    {
+      rev: "Rev. 1",
+      status: "[REDACTED]",
+      state: "redacted",
+      effective: "Effective: <span class=\"redacted\">redacted</span>",
+      p: "Held in the archive. The archive is in the building, and the building is the subject of Form SN-02."
+    }
+  ],
+  note: "Records prior to Rev. 2 are unavailable. The numbering begins at 1 regardless: a form that admits to having no history is a form nobody countersigns."
+};
+
+/* ------------------------------------------------------------------
+   The documents index. Three of these are real pages, one is real by
+   being absent - SN-03 links at a path that does not exist, and the
+   404 the origin returns is Form SN-03. The rest are not held.
+
+   `url` makes a row a link. `status` is printed as-is, so the bracketed
+   ones read as stamps rather than titles.
+------------------------------------------------------------------ */
+const DOCUMENTS = {
+  title: "Administrative Documents - Sprint Designation Office",
+  desc: "The documents index of the Sprint Designation Office. Maintaining an index is not the same as holding the documents.",
+  stamp: ["Index", "Administrative", "Not exhaustive"],
+  lede: "The Office maintains an index of its forms. Maintaining the index and holding the forms are separate responsibilities, and only one of them survived the review.",
+  forms: [
+    {
+      code: "SN-01",
+      name: "Sprint Designation Request",
+      status: "In force",
+      url: "/",
+      note: "The form itself. Currently at Rev. 4; the revisions are filed as Annex C."
+    },
+    {
+      code: "SN-02",
+      name: "Notice of Continued Operation",
+      status: "Internal distribution",
+      url: "/form-sn-02",
+      note: "Not for issue. Circulated to a distribution list of nobody, and therefore never read, and therefore still accurate."
+    },
+    {
+      code: "SN-03",
+      name: "No Such Document",
+      status: "Issued automatically",
+      url: "/form-sn-03",
+      /* The one link in this index that must not resolve. build.js checks
+         every other one against the pages it actually emitted; this flag is
+         how it is told that the missing page is the point. */
+      absent: true,
+      note: "Issued on request for anything the Office does not hold, including itself. Following the link demonstrates the form more completely than reading about it."
+    },
+    {
+      code: "SN-04",
+      name: "Unauthorized Sprint Naming Incident Report",
+      status: "Not held",
+      note: "Filed by teams who named a sprint without convening. No copy was retained, on the grounds that retention would constitute acknowledgement."
+    },
+    {
+      code: "SN-05",
+      name: "Designation Dispute Form",
+      status: "Not held",
+      note: "Disputes are referred on receipt to the committee. Referrals to date: none. Disputes to date: several."
+    },
+    {
+      code: "SN-06",
+      name: "",
+      status: "[WITHDRAWN]",
+      note: "Withdrawn on the advice of the committee that drafted it. Requests for access to restricted designations were made on this form."
+    },
+    {
+      code: "SN-07",
+      name: "",
+      status: "[ACCESS RESTRICTED]",
+      note: "Access is granted by the committee, on application. Applications are made on Form SN-06."
+    },
+    {
+      code: "SN-08",
+      name: "",
+      status: "[DO NOT REPRODUCE]",
+      note: "Held. The instruction appears on the document and nowhere else, which is why it appears here without it."
+    }
+  ],
+  annexes: [
+    { code: "Annex A", name: "Register of Designations", status: "Published in full", url: "/funny-sprint-names",
+      note: "Every designation on file, grouped by genre." },
+    { code: "Annex B", name: "Note on Character Limits", status: "Technical", url: "/sprint-names-for-jira",
+      note: "Why the form asks. Thirty characters, and where the number comes from." },
+    { code: "Annex C", name: "Revision History of Form SN-01", status: "Incomplete", url: "/revision-history",
+      note: "Four revisions. Two of them describable." }
+  ],
+  note: "Documents not listed in this index are not held by the Office. Documents listed in this index are not, on that basis alone, held by the Office either."
+};
+
+module.exports = { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS };

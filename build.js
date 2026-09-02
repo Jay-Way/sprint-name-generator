@@ -16,7 +16,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
-const { BLURBS, GENRE_PAGES, JIRA, MEMO } = require("./content.js");
+const { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS } = require("./content.js");
 
 const ORIGIN = "https://sprintname.dev";
 const OUT = path.join(__dirname, "dist");
@@ -76,6 +76,8 @@ const longest = g => Math.max(...g.names.map(n => n.length));
 const REGISTER_URL = "/funny-sprint-names";
 const JIRA_URL = "/sprint-names-for-jira";
 const genreUrl = g => "/sprint-names/" + slug(g.label);
+const DOCS_URL = "/administrative-documents";
+const REVISIONS_URL = "/revision-history";
 
 /* Every genre needs prose before it can have a page. Failing here is the
    point: a genre added to names.js with no entry in content.js would
@@ -287,7 +289,94 @@ code{
   color:var(--ink-2);
 }
 .signblock li{border-bottom:1px dotted var(--rule);padding:2px 0}
-.signblock li:last-child{border-bottom:0}`;
+.signblock li:last-child{border-bottom:0}
+
+/* ---------- the documents index and the revision history ---------- */
+/* Both are filing, not prose: a code, a title, a status, and a line
+   underneath explaining why the status is what it is. The code column is
+   given a fixed measure so the statuses line up down the page, which is
+   the entire aesthetic argument for a form. */
+.doclist,.revlist{list-style:none;margin:0;padding:0}
+.doclist > li{padding:11px 0;border-bottom:1px solid var(--rule-soft)}
+.doclist > li:last-child{border-bottom:0}
+.doc-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.doc-code{
+  flex:none;
+  min-width:5.6em;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;
+  font-weight:600;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.doc-name{flex:1 1 12ch;font-size:.98rem;color:var(--ink)}
+a.doc-name{text-decoration:none;text-underline-offset:3px}
+a.doc-name:hover{color:var(--accent);text-decoration:underline}
+/* SN-06 and after have no title, only a condition. The condition takes the
+   title's place rather than sitting in the status column next to nothing. */
+.doc-name--stamp{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.74rem;
+  letter-spacing:.16em;
+  color:var(--ink-3);
+}
+.doc-status{
+  flex:none;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.62rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.doc-note{
+  margin:5px 0 0;
+  padding-left:calc(5.6em + 12px);
+  max-width:60ch;
+  font-size:.85rem;
+  line-height:1.55;
+  color:var(--ink-3);
+}
+.doclist a.doc-name:hover ~ .doc-status{color:var(--accent)}
+@media (max-width:560px){.doc-note{padding-left:0}}
+
+.revlist > li{padding:15px 0;border-bottom:1px solid var(--rule-soft)}
+.revlist > li:last-child{border-bottom:0}
+.rev-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:6px}
+.rev-no{
+  font-family:"Archivo Black","Arial Black",sans-serif;
+  font-size:1.1rem;
+  letter-spacing:-.02em;
+  line-height:1;
+}
+.rev-status{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.62rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.rev--current .rev-no{color:var(--accent)}
+.rev--current .rev-status{color:var(--accent)}
+.rev-effective{
+  margin-left:auto;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.62rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.filed{
+  margin:18px 0 0;
+  padding-top:12px;
+  border-top:1px solid var(--rule);
+  max-width:60ch;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.68rem;
+  line-height:1.85;
+  letter-spacing:.04em;
+  color:var(--ink-3);
+}`;
 
 /* ---------- shared page furniture ---------- */
 
@@ -377,6 +466,7 @@ ${body}
   <footer class="fineprint">
     <span>${total} designations on file</span>
     <span>Minutes stored in this browser only. Nothing is transmitted.</span>
+    <a class="reglink" href="${DOCS_URL}">Administrative documents</a>
     <a class="ghlink" href="https://github.com/Jay-Way/sprint-name-generator"
        target="_blank" rel="noopener noreferrer"
        aria-label="Source on GitHub" title="Source on GitHub">
@@ -674,6 +764,114 @@ ${MEMO.sign.map(s => "      <li>" + s + "</li>").join("\n")}
   </section>`
 });
 
+/* ---------- the documents index and Form SN-01's revisions ----------
+   Both are noindex: two pages of filing with no names on them is exactly
+   the thin content the register exists to avoid producing. They are linked
+   from the seal on the form and from every generated footer, which is how
+   a document nobody indexes is supposed to be found.
+
+   The index is checked against reality below: every internal link it makes
+   has to be a page this build actually emits, apart from the one flagged
+   `absent`, which has to 404 or the joke does not land. */
+
+const docRow = d => {
+  const named = d.name
+    ? (d.url
+        ? '<a class="doc-name" href="' + d.url + '">' + esc(d.name) + "</a>"
+        : '<span class="doc-name">' + esc(d.name) + "</span>")
+    : '<span class="doc-name doc-name--stamp">' + esc(d.status) + "</span>";
+  return `      <li>
+        <div class="doc-head">
+          <span class="doc-code">${esc(d.code)}</span>
+          ${named}
+          ${d.name ? '<span class="doc-status">' + esc(d.status) + "</span>" : ""}
+        </div>
+        <p class="doc-note">${d.note}</p>
+      </li>`;
+};
+
+const documentsPage = shell({
+  title: DOCUMENTS.title,
+  desc: DOCUMENTS.desc,
+  url: DOCS_URL,
+  robotsMeta: "noindex, nofollow",
+  stamp: DOCUMENTS.stamp,
+  body: `  <section class="field">
+    <div class="field-head">
+      <span class="field-label">00 / Index</span>
+      <span class="readout">Held and not held</span>
+    </div>
+    ${crumbs([
+      { label: "Generator", url: "/" },
+      { label: "Administrative documents" }
+    ])}
+    <h1 class="page-title">Administrative Documents</h1>
+    <p class="lede">${DOCUMENTS.lede}</p>
+  </section>
+
+  <section class="field section">
+    <div class="field-head">
+      <span class="field-label">01 / Forms</span>
+      <span class="readout">${DOCUMENTS.forms.length} listed</span>
+    </div>
+    <ol class="doclist">
+${DOCUMENTS.forms.map(docRow).join("\n")}
+    </ol>
+  </section>
+
+  <section class="field section">
+    <div class="field-head">
+      <span class="field-label">02 / Annexes</span>
+      <span class="readout">${DOCUMENTS.annexes.length} listed</span>
+    </div>
+    <ol class="doclist">
+${DOCUMENTS.annexes.map(docRow).join("\n")}
+    </ol>
+    <p class="filed">${DOCUMENTS.note}</p>
+    <a class="cta" href="/">Return to the form</a>
+  </section>`
+});
+
+const revisionsPage = shell({
+  title: REVISIONS.title,
+  desc: REVISIONS.desc,
+  url: REVISIONS_URL,
+  robotsMeta: "noindex, nofollow",
+  stamp: REVISIONS.stamp,
+  body: `  <section class="field">
+    <div class="field-head">
+      <span class="field-label">00 / Revisions</span>
+      <span class="readout">${REVISIONS.entries.length} on record</span>
+    </div>
+    ${crumbs([
+      { label: "Generator", url: "/" },
+      { label: "Administrative documents", url: DOCS_URL },
+      { label: "Revision history" }
+    ])}
+    <h1 class="page-title">Revision History</h1>
+    <p class="lede">${REVISIONS.lede}</p>
+  </section>
+
+  <section class="field section">
+    <div class="field-head">
+      <span class="field-label">01 / Form SN-01</span>
+      <span class="readout">Rev. ${REVISIONS.entries.length} current</span>
+    </div>
+    <ol class="revlist">
+${REVISIONS.entries.map(e => `      <li class="rev--${e.state}">
+        <div class="rev-head">
+          <span class="rev-no">${esc(e.rev)}</span>
+          <span class="rev-status">${esc(e.status)}</span>
+          <span class="rev-effective">${e.effective}</span>
+        </div>
+        <p class="blurb">${e.p}</p>
+      </li>`).join("\n")}
+    </ol>
+    <p class="filed">${REVISIONS.note}</p>
+    <a class="cta" href="/">Return to the form</a>
+  </section>`
+});
+
 /* ---------- index.html adjustments ---------- */
 
 /* The chips are the page's only JS-built markup above the fold, and building
@@ -799,6 +997,11 @@ const files = [
   /* Absent from the sitemap by way of unlisted, but still uploaded. */
   { ...page(MEMO_URL, memoPage), unlisted: true },
   { ...page("404.html", read("404.html")), unlisted: true },
+  /* Filing rather than content, and noindex for that reason - see the
+     comment above the two of them. Uploaded, unlisted, and linked from the
+     seal on the form. */
+  { ...page(DOCS_URL, documentsPage), unlisted: true },
+  { ...page(REVISIONS_URL, revisionsPage), unlisted: true },
   ...GENRES.map(g => page(genreUrl(g), genrePage(g))),
   { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
   ...FONTS.map(f => ({
@@ -808,6 +1011,24 @@ const files = [
     cacheControl: LONG
   }))
 ];
+
+/* The documents index is only funny while it is accurate. Every internal
+   link it makes must be a page this build emits - except the one flagged
+   `absent`, which must not be, because the 404 it produces is Form SN-03
+   and following the link is how the index demonstrates it. */
+{
+  const emitted = new Set(files.map(f => "/" + f.key.replace(/^index\.html$/, "")));
+  for (const d of [...DOCUMENTS.forms, ...DOCUMENTS.annexes]) {
+    if (!d.url || !d.url.startsWith("/")) continue;
+    const held = emitted.has(d.url);
+    if (d.absent && held) throw new Error(
+      "build: the documents index flags " + d.code + " (" + d.url + ") as absent, "
+      + "but the build emits it. One of the two is wrong.");
+    if (!d.absent && !held) throw new Error(
+      "build: the documents index links " + d.code + " at " + d.url
+      + ", which this build does not emit. Add the page, fix the link, or flag it `absent`.");
+  }
+}
 
 /* Appended after the fact so the sitemap lists exactly the pages that were
    actually emitted, and can never fall out of step with them. */
