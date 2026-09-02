@@ -798,6 +798,7 @@ const files = [
   page(JIRA_URL, jiraPage),
   /* Absent from the sitemap by way of unlisted, but still uploaded. */
   { ...page(MEMO_URL, memoPage), unlisted: true },
+  { ...page("404.html", read("404.html")), unlisted: true },
   ...GENRES.map(g => page(genreUrl(g), genrePage(g))),
   { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
   ...FONTS.map(f => ({

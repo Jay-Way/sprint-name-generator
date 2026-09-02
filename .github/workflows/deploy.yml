@@ -7,6 +7,7 @@ on:
     # shouldn't spend an invalidation.
     paths:
       - index.html
+      - 404.html
       - names.js
       - build.js
       - content.js

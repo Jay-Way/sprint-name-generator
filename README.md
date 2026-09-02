@@ -76,6 +76,7 @@ If your prefix is longer than four characters, adjust the tightest preset in `LI
 
 ```
 index.html        app — markup, styles, generator logic (~600 lines, no dependencies)
+404.html          the not-found sheet, hand-written; CloudFront's error response
 names.js          the corpus — one array per genre
 og.png            social card, 1200×630
 fonts/            self-hosted woff2, latin subset
@@ -108,7 +109,7 @@ To change weights, edit the Google Fonts URL in `tools/`, download the latin-sub
 
 A crawler will not press **Convene committee**, so a search engine sees a page whose entire content is the words *No designation issued*. `build.js` fixes that by emitting the corpus a second time as flat HTML at [`/funny-sprint-names`](https://sprintname.dev/funny-sprint-names) — every name, grouped by genre, each one linking back to its deep link in the app.
 
-It now emits twelve pages — the app, the register, one file per genre at `/sprint-names/<genre>`, and a technical note on Jira's character limit at `/sprint-names-for-jira` — plus `sitemap.xml` and `robots.txt`. Everything on them that is a number — counts, totals, "N under 26", the longest name — is computed from `names.js` at build time rather than typed, so none of it can go stale.
+It now emits fourteen pages — the app, the register, one file per genre at `/sprint-names/<genre>`, a technical note on Jira's character limit at `/sprint-names-for-jira`, and two pages that are uploaded but kept out of the sitemap: an internal memo, and `404.html`, which CloudFront returns as its error response — plus `sitemap.xml` and `robots.txt`. Everything on them that is a number — counts, totals, "N under 26", the longest name — is computed from `names.js` at build time rather than typed, so none of it can go stale.
 
 Prose lives in [`content.js`](content.js). Nine genre pages generated from one template is the shape search engines file under *doorway* if the only thing that differs is the list, so each genre carries its own argument, its own issue/withhold advisory and its own annotated picks — about 340 words of bespoke copy per page. `build.js` refuses to run if a genre has no entry, or if a pick names something that isn't in that genre.
 
