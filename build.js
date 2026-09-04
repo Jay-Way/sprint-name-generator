@@ -894,34 +894,86 @@ function renderChips(html) {
     "limit-chips", LIMITS.map(l => l.label));
 }
 
-/* index.html states the corpus size in three places a script can't reach at
-   runtime — <title>, the description, the JSON-LD. Rather than let those drift
-   every time names are added, the shipped copy gets the real number written in.
-   Each pattern must match: a silent miss would defeat the point. */
-function syncCount(html) {
-  const patterns = [
-    [/(<title>Sprint Name Generator - )\d+( Funny Sprint Names<\/title>)/, "title"],
-    [/(funny sprint names - )\d+( across nine genres)/, "description"],
-    [/(A curated generator of )\d+( funny sprint names)/, "JSON-LD description"],
-    [/(<span id="corpus">)\d+(<\/span>)/, "footer count"]
-  ];
-  let out = html, changed = 0;
-  for (const [re, label] of patterns) {
+/* ---------- keeping the typed numbers honest ----------
+
+   index.html and 404.html both state the size of the corpus in copy no
+   script can reach at runtime — <title>, the meta descriptions, the social
+   cards, the JSON-LD, the 404's holdings section. Rather than let those
+   drift every time a name is added or a genre is withheld, the shipped
+   copies get the real figures written in at build time.
+
+   Genre counts are spelled out in prose ("eight genres deep"), so the word
+   is derived too — the alternative is copy that says nine while the register
+   ships eight, which is the exact failure this whole mechanism exists to
+   prevent.
+
+   Every pattern must match. A silent miss would defeat the point, so a
+   pattern that stops matching is a build failure rather than a warning. */
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six",
+  "seven", "eight", "nine", "ten", "eleven", "twelve"];
+const numberWord = n => NUMBER_WORDS[n] || String(n);
+const capitalise = s => s[0].toUpperCase() + s.slice(1);
+
+const genreCount = GENRES.length;
+const genreWord = numberWord(genreCount);
+
+/* [pattern, label, replacement] — the pattern must capture everything either
+   side of the figure, so the substitution can never widen its own match. */
+const INDEX_NUMBERS = [
+  [/(<title>Sprint Name Generator - )\d+( Funny Sprint Names<\/title>)/, "title", total],
+  [/(og:title" content="Sprint Name Generator - )\d+( Funny Sprint Names")/, "og:title", total],
+  [/(twitter:title" content="Sprint Name Generator - )\d+( Funny Sprint Names")/, "twitter:title", total],
+  [/(funny sprint names - )\d+( across )/, "description count", total],
+  [/( across )[a-z]+( genres, filtered)/, "description genre count", genreWord],
+  [/(A curated generator of )\d+( funny sprint names)/, "JSON-LD count", total],
+  [/(, across )[a-z]+( genres, filterable)/, "JSON-LD genre count", genreWord],
+  [/(og:description" content=")[A-Z][a-z]+( genres of sprint name)/, "og:description genre count", capitalise(genreWord)],
+  [/(twitter:description" content=")[A-Z][a-z]+( genres of sprint name)/, "twitter:description genre count", capitalise(genreWord)],
+  [/(<span id="corpus">)\d+(<\/span>)/, "footer count", total]
+];
+
+/* 404.html is hand-written and shipped as-is, which made it the one page
+   whose figures nobody was checking. It states the totals three times and
+   lists every genre with its size, so it gets the same treatment. */
+const NOTFOUND_NUMBERS = [
+  [/(register of sprint names, )[a-z]+( genres deep)/, "finding", genreWord],
+  [/(<span class="readout">)\d+( designations &#183; )/, "holdings readout total", total],
+  [/( designations &#183; )\d+( genres<\/span>)/, "holdings readout genres", genreCount],
+  [/(>The register \()\d+(\)<\/a>)/, "register link", total],
+  [/(<p class="blurb">)[A-Z][a-z]+( genre files sit under)/, "genre files line", capitalise(genreWord)],
+  [/(<span>)\d+( designations on file<\/span>)/, "footer count", total]
+];
+
+function syncNumbers(html, file, patterns) {
+  let out = html;
+  for (const [re, label, value] of patterns) {
     if (!re.test(out)) throw new Error(
-      "build: the " + label + " in index.html no longer matches its count pattern. "
-      + "Update the pattern in syncCount(), or the count will silently go stale.");
-    const next = out.replace(re, "$1" + total + "$2");
-    if (next !== out) changed++;
-    out = next;
+      "build: the " + label + " in " + file + " no longer matches its pattern. "
+      + "Update it in build.js, or the figure will silently go stale.");
+    out = out.replace(re, "$1" + value + "$2");
   }
-  if (changed) console.log("  (corpus count in index.html synced to " + total + ")");
   return out;
 }
 
-if (GENRES.length !== 9) {
-  console.warn("  ! " + GENRES.length + " genres, but the copy still says \"nine\" - "
-    + "check index.html's description and the register preamble.");
+/* The 404's genre list is regenerated rather than pattern-matched: a withheld
+   genre has to disappear from it entirely, which no substitution can do. */
+function renderGenreList(html) {
+  const links = GENRES
+    .map(g => '      <a href="' + genreUrl(g) + '">' + esc(g.label)
+      + " (" + g.names.length + ")</a>")
+    .join("\n");
+  const re = /(<nav class="toc" aria-label="Genres">\n)[\s\S]*?(\n *<\/nav>)/;
+  if (!re.test(html)) throw new Error(
+    "build: could not find the Genres nav in 404.html. Update renderGenreList().");
+  return html.replace(re, "$1" + links + "$2");
 }
+
+const syncIndex = html => syncNumbers(html, "index.html", INDEX_NUMBERS);
+const syncNotFound = html =>
+  renderGenreList(syncNumbers(html, "404.html", NOTFOUND_NUMBERS));
+
+console.log("  (figures synced: " + total + " names across "
+  + genreWord + " genres)");
 
 /* ---------- sitemap and robots ----------
 
@@ -990,13 +1042,13 @@ const page = (url, body) => ({
 });
 
 const files = [
-  page("index.html", renderChips(syncCount(indexHtml))),
+  page("index.html", renderChips(syncIndex(indexHtml))),
   { key: "names.js", body: namesJs, contentType: "text/javascript; charset=utf-8", cacheControl: SHORT },
   page(REGISTER_URL, registerPage),
   page(JIRA_URL, jiraPage),
   /* Absent from the sitemap by way of unlisted, but still uploaded. */
   { ...page(MEMO_URL, memoPage), unlisted: true },
-  { ...page("404.html", read("404.html")), unlisted: true },
+  { ...page("404.html", syncNotFound(read("404.html"))), unlisted: true },
   /* Filing rather than content, and noindex for that reason - see the
      comment above the two of them. Uploaded, unlisted, and linked from the
      seal on the form. */
