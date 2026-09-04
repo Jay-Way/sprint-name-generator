@@ -5,11 +5,16 @@
    index.html: this changes far more often than the machinery does,
    and editing it shouldn't mean reading a template.
 
-   Nine genre pages built from one template is a shape search engines
+   Eight genre pages built from one template is a shape search engines
    file under "doorway" if the only thing that differs is the list.
    So each genre gets its own argument, its own advice, and its own
    picks. If you add a genre, it needs an entry here — build.js will
    refuse to run until it has one.
+
+   Catastrophe Theatre keeps its blurb and its page copy below even
+   though it is no longer in GENRES. build.js only validates the
+   genres the corpus actually ships, so these sit dormant and cost
+   nothing until names.js unseals WITHHELD.
 ------------------------------------------------------------------ */
 
 /* One sentence per genre, used on the register where space is tight. */
@@ -22,6 +27,7 @@ const BLURBS = {
   bofh: "In the tradition of the Bastard Operator From Hell: explanations offered to users, none of them true, all of them technically unfalsifiable.",
   cult: "For organisations where “alignment” has quietly stopped being a metaphor. Onboarding as initiation, company values as liturgy.",
   occult: "Agile ceremony taken literally. Stand-up as summoning, retrospective as séance, and a backlog that grows when nobody is observing it.",
+  /* Withheld — kept against the day names.js unseals it. */
   catastrophe: "The smallest and most theatrical genre. For sprints whose failure was visible from orbit and went ahead on schedule anyway."
 };
 
@@ -38,7 +44,7 @@ const GENRE_PAGES = {
     avoid: "Nobody in the room has read the roadmap. This genre needs a shared referent to be anything other than words.",
     picks: [
       ["Per My Last Email", "Paired with <em>Re: Per My Last Email</em>, which is for the sprint after this one did not work."],
-      ["Backward Compatibility Theater", "Exactly at Jira's 30-character cap — fitting or unbearable, depending on the week."],
+      ["Definition of “Done-ish”", "The quotation marks are the argument. Without them it is just a process document."],
       ["Every User Has a Test System", "After the sysadmin proverb. Some teams are lucky enough to have a separate one to run production in."]
     ]
   },
@@ -46,7 +52,7 @@ const GENRE_PAGES = {
   despair: {
     lede: [
       "The largest genre by a wide margin, which is either a comment on the profession or on whoever maintains this register. These are not names about a sprint's goal. They are names about the code the sprint has to touch.",
-      "The vocabulary is git, blame and time. <em>Past Me Was an Idiot</em>, <em>Future Me's Problem</em>, <em>Commit Archaeology</em>. Several are things a developer has genuinely said out loud, transcribed without alteration and improved only by being printed on a board where management can see them."
+      "The vocabulary is git, blame and time. <em>Past Me Was an Idiot</em>, <em>Future Me’s Problem</em>, <em>Commit Archaeology</em>. Several are things a developer has genuinely said out loud, transcribed without alteration and improved only by being printed on a board where management can see them."
     ],
     useIt: "The sprint is being spent inside a subsystem nobody volunteered for.",
     avoid: "The code in question was written by someone in the room, last month. Aim this at an inheritance, not a colleague.",
@@ -59,8 +65,8 @@ const GENRE_PAGES = {
 
   oncall: {
     lede: [
-      "The smallest of the working genres and by some distance the most specific. Every name here is written from the pager's point of view, at the hour the pager prefers.",
-      "Four of them form an ordered sequence — <em>Production Called</em>, <em>Production Calls Again</em>, <em>Production Has Your Number</em>, <em>Production Knows Where You Sleep</em> — meant to be used across consecutive sprints, escalating quietly while nobody comments on it. Whether anyone notices by the fourth is the experiment."
+      "The smallest genre in the register and by some distance the most specific. Every name here is written from the pager's point of view, at the hour the pager prefers.",
+      "Four of them form an ordered sequence — <em>Prod Called</em>, <em>Prod Calls Again</em>, <em>Prod Has Your Number</em>, <em>Prod Knows Where You Sleep</em> — meant to be used across consecutive sprints, escalating quietly while nobody comments on it. Whether anyone notices by the fourth is the experiment."
     ],
     useIt: "The sprint after an incident, or the one containing the rotation everybody has been avoiding.",
     avoid: "The incident is still open. Timing is the entire genre; too early and it reads as a shrug.",
@@ -74,7 +80,7 @@ const GENRE_PAGES = {
   hope: {
     lede: [
       "Optimism deployed as an engineering methodology. This is the gentlest genre in the register and the one most likely to survive contact with management, because on a board it reads as encouragement rather than commentary.",
-      "The mechanism is qualification. <em>Almost Certain</em>. <em>Statistically Encouraging</em>. <em>Confidence Without Evidence</em>. Each one promises something and then withdraws precisely enough of it to remain accurate. Nothing here is a lie, which is what makes it uncomfortable."
+      "The mechanism is qualification. <em>Promisingly Unstable</em>. <em>Statistically Encouraging</em>. <em>Confidence Without Evidence</em>. Each one promises something and then withdraws precisely enough of it to remain accurate. Nothing here is a lie, which is what makes it uncomfortable."
     ],
     useIt: "The start of a quarter, before the estimates have met the calendar.",
     avoid: "The end of one. By then these stop being funny and start being minutes.",
@@ -95,7 +101,7 @@ const GENRE_PAGES = {
     picks: [
       ["Chat, Are We Cooked?", "The sprint-planning question, asked in the correct dialect."],
       ["+100 Aura, 0 Tests", "A complete engineering trade-off in eighteen characters."],
-      ["Source: Jira", "A citation that settles nothing."]
+      ["Gaslight, Gatekeep, Git Push", "One word substituted, and the whole formula transfers to software delivery intact."]
     ]
   },
 
@@ -108,8 +114,8 @@ const GENRE_PAGES = {
     avoid: "An audience that will fact-check it. Half the humour is the refusal to be checkable.",
     picks: [
       ["Woodworms in Hashtable", "The founding example of the construction rule. Nothing in a hashtable can rot, which is the entire joke."],
-      ["node_modules Reached Critical Density", "Too long for Jira, correct in every other respect."],
-      ["CSS Became Load-Bearing", "Not an excuse so much as a diagnosis."]
+      ["Microservice Became Macroservice", "Two characters too long for Jira, and the one entry here that is really an architecture review."],
+      ["Daemons", "Seven characters, no verb, no explanation offered. The genre at its shortest and its purest."]
     ]
   },
 
@@ -141,6 +147,8 @@ const GENRE_PAGES = {
     ]
   },
 
+  /* Withheld with the genre itself. Unreferenced while catastrophe is out
+     of GENRES, and kept verbatim so that unsealing it needs no new prose. */
   catastrophe: {
     lede: [
       "The smallest and most theatrical genre, and the only one that abandons the register's usual restraint. These are not really sprint names. They are posters for a play nobody green-lit.",

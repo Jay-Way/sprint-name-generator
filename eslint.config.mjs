@@ -37,9 +37,11 @@ export default [
   },
 
   /* The corpus. A classic script that defines GENRES for whoever
-     loads it — index.html by <script src>, build.js by eval. Nothing
-     in the file uses it, and that is the point, so no-unused-vars is
-     told to expect exactly that one name and no other. */
+     loads it — index.html by <script src>, build.js by eval — and
+     WITHHELD, which nothing loads yet, against the day something
+     splices it in. Neither is referenced inside the file, and that is
+     the point, so no-unused-vars is told to expect exactly those two
+     names and no other. */
   {
     files: ["names.js"],
     languageOptions: {
@@ -49,7 +51,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      "no-unused-vars": ["error", { varsIgnorePattern: "^GENRES$" }]
+      "no-unused-vars": ["error", { varsIgnorePattern: "^(GENRES|WITHHELD)$" }]
     }
   }
 ];

@@ -34,7 +34,7 @@ Other things it does:
 - **Character limit filter** for teams whose tracker caps sprint names (see below)
 - **Live character count** on every result, so you can eyeball it against any limit
 - **Deep links** — every name has a URL (`#/oncall/three-am-deployment`)
-- **[The register](https://sprintname.dev/funny-sprint-names)** — all 447 names on one page, grouped by genre, with character counts
+- **[The register](https://sprintname.dev/funny-sprint-names)** — all 385 names on one page, grouped by genre, with character counts
 - **[A page per genre](https://sprintname.dev/sprint-names/occult-scrum)** — what each one is for, when it lands, when it doesn't
 - **[Character limits in Jira](https://sprintname.dev/sprint-names-for-jira)** — the number, where it comes from, and what fits under it
 - **Copy button** for pasting straight into your tracker
@@ -49,9 +49,9 @@ Jira caps sprint names at **30 characters** — in the UI only; the database col
 
 | Preset | Names available |
 |---|--:|
-| No limit | 447 |
-| ≤ 30 — Jira's actual cap | 417 |
-| ≤ 26 — room for a short prefix | 372 |
+| No limit | 385 |
+| ≤ 30 — Jira's actual cap | 365 |
+| ≤ 26 — room for a short prefix | 326 |
 
 Your choice persists between visits. When a filtered pool runs dry but longer names remain unissued, the main button becomes **Raise the limit** and steps out one notch — it won't silently strand you with nothing to press.
 
@@ -61,16 +61,15 @@ If your prefix is longer than four characters, adjust the tightest preset in `LI
 
 | Genre | Names | ≤ 30 | ≤ 26 |
 |---|--:|--:|--:|
-| Developer Despair | 93 | 90 | 88 |
-| Gen Z Brainrot | 76 | 73 | 62 |
-| Enterprise Sarcasm | 71 | 71 | 67 |
-| BOFH Excuses | 60 | 52 | 44 |
-| Hope Driven Dev | 46 | 46 | 42 |
-| Occult Scrum | 35 | 28 | 21 |
+| Developer Despair | 84 | 81 | 79 |
+| Gen Z Brainrot | 70 | 67 | 57 |
+| Enterprise Sarcasm | 69 | 69 | 66 |
+| Hope Driven Dev | 42 | 42 | 38 |
+| BOFH Excuses | 36 | 32 | 26 |
+| Occult Scrum | 33 | 26 | 19 |
 | Corporate Cult | 28 | 25 | 18 |
-| On-Call Horror | 23 | 22 | 22 |
-| Catastrophe Theatre | 15 | 10 | 8 |
-| **Total** | **447** | **417** | **372** |
+| On-Call Horror | 23 | 23 | 23 |
+| **Total** | **385** | **365** | **326** |
 
 ## Project structure
 
@@ -109,9 +108,9 @@ To change weights, edit the Google Fonts URL in `tools/`, download the latin-sub
 
 A crawler will not press **Convene committee**, so a search engine sees a page whose entire content is the words *No designation issued*. `build.js` fixes that by emitting the corpus a second time as flat HTML at [`/funny-sprint-names`](https://sprintname.dev/funny-sprint-names) — every name, grouped by genre, each one linking back to its deep link in the app.
 
-It now emits sixteen pages — the app, the register, one file per genre at `/sprint-names/<genre>`, a technical note on Jira's character limit at `/sprint-names-for-jira`, and four pages that are uploaded but kept out of the sitemap: an internal memo, a documents index at `/administrative-documents`, the revision history of Form SN-01 at `/revision-history`, and `404.html`, which CloudFront returns as its error response — plus `sitemap.xml` and `robots.txt`. Everything on them that is a number — counts, totals, "N under 26", the longest name — is computed from `names.js` at build time rather than typed, so none of it can go stale.
+It now emits fifteen pages — the app, the register, one file per genre at `/sprint-names/<genre>`, a technical note on Jira's character limit at `/sprint-names-for-jira`, and four pages that are uploaded but kept out of the sitemap: an internal memo, a documents index at `/administrative-documents`, the revision history of Form SN-01 at `/revision-history`, and `404.html`, which CloudFront returns as its error response — plus `sitemap.xml` and `robots.txt`. Everything on them that is a number — counts, totals, "N under 26", the longest name — is computed from `names.js` at build time rather than typed, so none of it can go stale. `index.html` and `404.html` are hand-written and carry their figures in prose, so the build writes the real ones in on the way past, genre counts included: the word *eight* in "eight genres deep" is derived from `GENRES.length` like everything else. A pattern that stops matching fails the build rather than warning, because a silent miss is the only outcome worth guarding against.
 
-Prose lives in [`content.js`](content.js). Nine genre pages generated from one template is the shape search engines file under *doorway* if the only thing that differs is the list, so each genre carries its own argument, its own issue/withhold advisory and its own annotated picks — about 340 words of bespoke copy per page. `build.js` refuses to run if a genre has no entry, or if a pick names something that isn't in that genre.
+Prose lives in [`content.js`](content.js). Eight genre pages generated from one template is the shape search engines file under *doorway* if the only thing that differs is the list, so each genre carries its own argument, its own issue/withhold advisory and its own annotated picks — about 340 words of bespoke copy per page. `build.js` refuses to run if a genre has no entry, or if a pick names something that isn't in that genre.
 
 It also **pre-renders the genre and character-limit chips** into `index.html`. They used to be built by the script at runtime, which meant two rows of buttons appeared after first paint and shoved every section below them down the page — 0.30 of cumulative layout shift, and the single largest CLS contributor the site had. Written into the markup they cost nothing, and the genre labels become indexable text as a side effect. `wireChips()` in the app only attaches handlers to whatever is already there, and falls back to creating the buttons when the page is opened unbuilt from disk.
 
@@ -134,7 +133,7 @@ Append to the relevant array in `names.js`:
   exhausted:"The register sleeps. You do not.",
   names:[
   "Three AM Deployment",
-  "Production Knows Where You Sleep",
+  "Prod Knows Where You Sleep",
   "Your name here"
 ]},
 ```
@@ -142,7 +141,7 @@ Append to the relevant array in `names.js`:
 House rules, so the corpus stays coherent:
 
 - **Title Case, with small words lowercase** — `Refactor and Pray`, not `Refactor And Pray`
-- **Acronyms and identifiers keep their casing** — `Must Be DNS`, `node_modules Reached Critical Density`
+- **Acronyms and identifiers keep their casing** — `Must Be DNS`, `Waiting for Godot.js`
 - **Typographic apostrophes** (`’`, not `'`) — they're set at display size and it shows
 - **Under ~42 characters.** Longer still renders, at the smallest tier, but it stops being a sprint name and starts being a sentence
 - **No duplicates across genres.** A name belongs to exactly one
@@ -151,7 +150,21 @@ The bar for inclusion: a name earns its place by being either **uncomfortably ac
 
 ### Adding a genre
 
-Add an object with a unique `id`, a `label`, an `accent` — an institutional ink distinct from the nine already in use — and an `exhausted` line, printed when a team has issued every name in the genre. Write that line in the genre's own voice rather than deriving it from the label; the whole point is that it lands differently for On-Call Horror than for Hope Driven Dev. `build.js` refuses to build a genre that has none, because the alternative is showing `undefined` to the one visitor who read all the way to the end of a genre. The UI picks it up automatically; the accent tints the whole page when that genre is selected.
+Add an object with a unique `id`, a `label`, an `accent` — an institutional ink distinct from the eight already in use — and an `exhausted` line, printed when a team has issued every name in the genre. Write that line in the genre's own voice rather than deriving it from the label; the whole point is that it lands differently for On-Call Horror than for Hope Driven Dev. `build.js` refuses to build a genre that has none, because the alternative is showing `undefined` to the one visitor who read all the way to the end of a genre. The UI picks it up automatically; the accent tints the whole page when that genre is selected.
+
+### Withholding a genre
+
+`names.js` ends with a second array, `WITHHELD`, holding genres that are kept in
+the source but struck from the corpus — currently Catastrophe Theatre, which
+abandoned the understatement the rest of the register runs on and read as a
+different product.
+
+Nothing iterates it. Every count, the register, the genre pages, the 404's
+holdings list and the sitemap are all derived from `GENRES`, so a withheld genre
+cannot leak into a number or a crawled page, and `build.js` never validates it.
+Its `BLURBS` and `GENRE_PAGES` entries stay in `content.js` regardless, unused
+and costing nothing, so that restoring it is a one-line splice rather than a
+rewrite.
 
 ## Deployment
 
