@@ -495,24 +495,24 @@ function registerSection(g, i) {
 }
 
 const registerPage = shell({
-  title: `Funny Sprint Names — All ${total} in the Register`,
-  desc: `All ${total} funny sprint names in the register, grouped into ${GENRES.length} genres, `
+  title: `Unhinged Sprint Names — All ${total} in the Register`,
+  desc: `All ${total} sprint names in the register — sarcastic, unhinged, occasionally funny — grouped into ${GENRES.length} genres, `
     + "with character counts for teams working under the Jira 30-character limit.",
   url: REGISTER_URL,
   stamp: ["Appendix A", "The complete register", `${total} entries &#183; ${GENRES.length} genres`],
   jsonLd: [crumbsLd([
     { label: "Sprint Name Generator", url: "/" },
-    { label: "Funny Sprint Names", url: REGISTER_URL }
+    { label: "Unhinged Sprint Names", url: REGISTER_URL }
   ])],
   body: `  <section class="field">
     <div class="field-head">
       <span class="field-label">A.0 / Preamble</span>
       <span class="readout">Public record</span>
     </div>
-    ${crumbs([{ label: "Generator", url: "/" }, { label: "Funny Sprint Names" }])}
-    <h1 class="page-title">Funny Sprint Names</h1>
+    ${crumbs([{ label: "Generator", url: "/" }, { label: "Unhinged Sprint Names" }])}
+    <h1 class="page-title">Unhinged Sprint Names</h1>
     <p class="lede">Every name this office has ever issued, all ${total} of them, published in full. They exist because the alternative was another sprint called <em>Synergy &amp; Innovation</em>, and because the generators that produce <em>Sprint Blue Falcon</em> by welding an adjective to a random noun are not actually funny — they just have the shape of a joke.</p>
-    <p class="lede">Nothing here is generated. Every entry was written by hand and earns its place by being either uncomfortably accurate (<em>Refactor and Pray</em>) or tonally deranged (<em>Soft Launch Into Darkness</em>). Mild office humour is the exact failure mode this register exists to escape.</p>
+    <p class="lede">The pages are generated; the names are not. A build script assembled everything you are reading except the entries themselves, each of which was written by a person, by hand, and earns its place by being either uncomfortably accurate (<em>Refactor and Pray</em>) or tonally deranged (<em>Soft Launch Into Darkness</em>). Mild office humour is the exact failure mode this register exists to escape.</p>
     <p class="lede">The number after each name is its character count, which matters more than it should — see <a href="${JIRA_URL}">sprint name character limits in Jira</a>. Click any name to have it stamped properly by <a href="/">the generator</a>.</p>
   </section>
 
@@ -575,7 +575,7 @@ function genrePage(g) {
     stamp: ["Genre file", label, `${g.names.length} entries`],
     jsonLd: [crumbsLd([
       { label: "Sprint Name Generator", url: "/" },
-      { label: "Funny Sprint Names", url: REGISTER_URL },
+      { label: "Unhinged Sprint Names", url: REGISTER_URL },
       { label: g.label, url: genreUrl(g) }
     ])],
     body: `  <section class="field">
@@ -654,7 +654,7 @@ const jiraPage = shell({
   stamp: ["Technical note", "Character limits", "Cloud &amp; Data Center"],
   jsonLd: [crumbsLd([
     { label: "Sprint Name Generator", url: "/" },
-    { label: "Funny Sprint Names", url: REGISTER_URL },
+    { label: "Unhinged Sprint Names", url: REGISTER_URL },
     { label: "Sprint Names for Jira", url: JIRA_URL }
   ])],
   body: `  <section class="field">
@@ -1044,6 +1044,17 @@ const page = (url, body) => ({
 const files = [
   page("index.html", renderChips(syncIndex(indexHtml))),
   { key: "names.js", body: namesJs, contentType: "text/javascript; charset=utf-8", cacheControl: SHORT },
+  /* The registry function's allowlist - api/handler.mjs fetches it and
+     files nothing that isn't in it. Read from here rather than bundled
+     into the function, so a new name ships with the site and the
+     function never needs redeploying. Plain JSON rather than names.js:
+     the function has no business eval()ing anything. */
+  {
+    key: "corpus.json",
+    body: JSON.stringify({ names: allNames.map(x => x.name) }) + "\n",
+    contentType: "application/json; charset=utf-8",
+    cacheControl: SHORT
+  },
   page(REGISTER_URL, registerPage),
   page(JIRA_URL, jiraPage),
   /* Absent from the sitemap by way of unlisted, but still uploaded. */

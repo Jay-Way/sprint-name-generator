@@ -39,9 +39,10 @@ Other things it does:
 - **[Character limits in Jira](https://sprintname.dev/sprint-names-for-jira)** — the number, where it comes from, and what fits under it
 - **Copy button** for pasting straight into your tracker
 - **Genre-tinted UI** — each genre stamps in its own ink
+- **Team registers** — a shared file of names your team actually adopted, opened with one click and handed around as a link. Adopted names are never issued to that team again, and a pasted Jira board can be filed retrospectively
 - Escalating button labels, for the persistent
 
-No backend, no accounts, no tracking, no network requests after page load. Nothing you do here leaves your browser.
+No accounts and no tracking. Unless you open a team register, nothing you do here leaves your browser; if you do, the register holds names from the public corpus and dates, under a token only your team has, and nothing else.
 
 ## Character limits
 
@@ -81,6 +82,8 @@ og.png            social card, 1200×630
 fonts/            self-hosted woff2, latin subset
 content.js        the prose for every generated page, and the documents index
 build.js          assembles dist/ — no dependencies either
+api/handler.mjs   the team-register function (Lambda, Node 22, SDK from the runtime)
+infra/            Terraform for the function and its table, applied by hand
 tools/og-card.html   source of og.png, for when the card needs redrawing
 ```
 
@@ -98,7 +101,7 @@ The corpus is deliberately a separate file: names change far more often than cod
 
 Self-hosted, latin subset, five woff2 files totalling 116 KB — of which the homepage fetches 64 KB, because nothing on it renders in IBM Plex Sans. Both families are OFL-licensed, so redistributing them here is fine.
 
-They were served from Google Fonts until PageSpeed put a number on it: a render-blocking stylesheet on a third origin, 750 ms before a single glyph could be resolved, and a second hop to `fonts.gstatic.com` after that. The `@font-face` rules now sit inline in the style block and the files ship from the same CloudFront distribution as the page, preloaded. That also makes the footer's *nothing is transmitted* claim true — the site now makes no third-party request at all.
+They were served from Google Fonts until PageSpeed put a number on it: a render-blocking stylesheet on a third origin, 750 ms before a single glyph could be resolved, and a second hop to `fonts.gstatic.com` after that. The `@font-face` rules now sit inline in the style block and the files ship from the same CloudFront distribution as the page, preloaded. That also makes the footer's privacy line true — the site makes no third-party request at all, and talks to nothing but its own team-register function, and only once someone opens a register.
 
 The `unicode-range` descriptors are copied verbatim from Google's CSS rather than dropped, so characters outside latin still fall through to a system font instead of rendering as `.notdef` boxes. `≤`, in the character-limit chips, is one of them.
 
@@ -261,8 +264,56 @@ The workflow fails fast naming the missing variable, rather than dying inside th
 - **Don't give the deploy job an `environment:` without changing the trust policy.** Referencing an environment rewrites the OIDC `sub` claim from `repo:…:ref:refs/heads/main` to `repo:…:environment:<name>`, and the role stops being assumable. If you want deployment gates, pin `sub` to the environment form instead and add a `"token.actions.githubusercontent.com:ref": "refs/heads/main"` condition to keep the branch restriction.
 - **No SPA error-page rewrites needed.** Deep links are hash fragments, which never reach the server. Set `index.html` as the default root object and you're done.
 
-## Roadmap
+## Team registers
 
-Phase 1 is deliberately static. A possible phase 2 introduces optional accounts, so teams can mark names as **used** and keep track of which ones they've already deployed into the wild — eventually a shared history of beautifully questionable sprint naming decisions.
+The one part of the site with a server. A register is a DynamoDB item holding `{ name: adoptedAt }` for one team, opened by a 192-bit token that lives in the share link (`/#/register/<token>`) and in each member's `localStorage`. The table keys on the token's SHA-256, never the token.
+
+Design constraints, all deliberate:
+
+- **No accounts.** Whoever holds the link can file and withdraw. Nothing identifies a person.
+- **Corpus names only.** The function fetches `/corpus.json` (emitted by `build.js`) and refuses anything not in it. That is the abuse policy — a public endpoint storing free text becomes somebody's free storage — and it keeps anything from a team's own tracker out of the account. It also bounds the item size: a register can never outgrow the corpus.
+- **Deployed once.** Because the allowlist is read from the site at runtime, adding names never needs the function redeployed. The deploy workflow does not touch it.
+- **Expiry by TTL.** 7 days for a register nobody files in, 18 months since the last filing otherwise.
+- **Logs only failures**, retained 7 days. No request, header or address is written anywhere.
+
+### Setting it up
+
+No long-lived access key is involved. Terraform runs on short-lived credentials from IAM Identity Center, as an identity that can touch `sng-registry-*` resources and nothing else.
+
+**Once, in the console, as an administrator** (replace `ACCOUNT_ID` in both JSON files first):
+
+1. **IAM → Policies → Create policy**, JSON from [`infra/iam/registry-boundary.json`](infra/iam/registry-boundary.json), named exactly `sng-registry-boundary`. This caps what the function's role can ever do, whoever writes its policy.
+2. **IAM Identity Center → Enable** (free; pick the region you deploy to). Create a user for yourself.
+3. **Permission sets → Create → Custom**, inline policy from [`infra/iam/deployer-policy.json`](infra/iam/deployer-policy.json), name `SngRegistryDeployer`, session duration 1 hour.
+4. **AWS accounts → your account → Assign users**: your user, that permission set.
+
+**On your machine:**
+
+```bash
+aws configure sso --profile sng-registry      # start URL is on the Identity Center dashboard
+aws sso login --profile sng-registry           # each session; opens the browser
+
+cd infra
+echo 'account_id = "123456789012"' > terraform.tfvars   # the site's account; gitignored
+export AWS_PROFILE=sng-registry
+terraform init
+terraform apply -var 'budget_email=you@example.com'   # budget alarm optional; omit to skip
+```
+
+`account_id` is not a convenience: Terraform's provider is pinned to it with `allowed_account_ids`, so a shell still pointing at some other account's profile fails at `plan` instead of building the registry there.
+
+Why a boundary and not just a narrow policy: the deployer has to create the function's IAM role. A deployer that can create roles and write their policies can write itself an admin policy, hand it to a function and invoke it. The deployer policy therefore only allows creating roles that carry `sng-registry-boundary`, and only passing them to Lambda, so the worst a leaked session can do is administer this one table.
+
+Then paste the `api_url` output into `REGISTRY_API` in `index.html` and push — that deploys the frontend half. While `REGISTRY_API` is empty, section 04 removes itself and the site behaves exactly as before.
+
+Notes:
+
+- **State is local** (`infra/terraform.tfstate`, gitignored). Keep it; losing it means importing the resources by hand. Move it to an S3 backend if more than one machine will ever apply this.
+- **`reserved_concurrency` defaults to 3** as a cost ceiling. A young account whose Lambda concurrency quota is still 10 refuses any reservation at all — apply with `-var 'reserved_concurrency=null'` there, and rely on the budget alarm.
+- **Only `api/handler.mjs` changes need a re-apply.** `terraform apply` re-zips and redeploys it.
+- **Testing against a local build:** add `-var 'extra_origins=["http://localhost:8000"]'` so CORS lets the dev server through.
+- **A function URL with auth `NONE` still needs two permission statements** — `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction` (scoped with `invoked_via_function_url`). Without the second, every call is a 403. Both are in `main.tf`.
+
+## Roadmap
 
 Standing candidate: `Production Called → Production Calls Again → Production Has Your Number → Production Knows Where You Sleep` is an ordered sequence pretending to be four independent names. Genres whose names arrive in order, across consecutive sprints, would be a real feature.
