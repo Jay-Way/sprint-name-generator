@@ -6,3 +6,11 @@ dist/
 # Pulled in only to run ESLint. Nothing here ships.
 node_modules/
 package-lock.json
+
+# Terraform. State stays on the machine that applied it - see README →
+# Team registers. The lock file is committed; the rest is not.
+infra/.terraform/
+infra/.build/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars

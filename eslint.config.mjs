@@ -6,8 +6,8 @@
    opinions already, and a linter that reformats is a linter people
    turn off.
 
-   Three files, three environments, because the JS here is not one
-   program. build.js and content.js are Node. names.js is a plain
+   Four files, three environments, because the JS here is not one
+   program. build.js, content.js and api/handler.mjs are Node. names.js is a plain
    <script> the browser loads, and build.js eval()s — it declares a
    global on purpose, which is the one thing `recommended` would
    otherwise complain about.
@@ -31,6 +31,18 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "commonjs",
+      globals: globals.node
+    },
+    rules: js.configs.recommended.rules
+  },
+
+  /* The registry function. An ES module on the Lambda Node runtime,
+     which supplies the AWS SDK - nothing is bundled. */
+  {
+    files: ["api/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
       globals: globals.node
     },
     rules: js.configs.recommended.rules

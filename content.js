@@ -227,7 +227,9 @@ const MEMO = {
       h: "There is no records department to forward anything to",
       p: [
         "Minutes are retained in the requesting browser. This was not a privacy decision. It is where they ended up once there was nowhere left to forward them, and nobody to receive them if there had been.",
-        "The Office holds no copy. It cannot tell you what you have been issued, how often you visit, or at what hour, and it will not acquire the capacity to do so, since acquiring anything requires a budget line and the budget was the first thing to go."
+        "The Office holds no copy. It cannot tell you what you have been issued, how often you visit, or at what hour, and it will not acquire the capacity to do so, since acquiring anything requires a budget line and the budget was the first thing to go.",
+        "One exception has since been approved, on the grounds that nobody remained to object. A team may open a register, and the Office will hold it: the designations the team actually adopted, and the dates. The file is kept under a number only the team holds. The Office retains a fingerprint of that number rather than the number itself, and so could not open the file if there were anyone left to send. It records which names, and when. It does not record who, and it accepts nothing that is not already a designation on the public register.",
+        "A file nobody adds to for eighteen months is destroyed. A file opened and never added to is destroyed after seven days. This is the first retention schedule the Office has ever met."
       ]
     },
     {

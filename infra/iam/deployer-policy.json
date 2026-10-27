@@ -1,0 +1,61 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Table",
+      "Effect": "Allow",
+      "Action": "dynamodb:*",
+      "Resource": "arn:aws:dynamodb:*:879647290867:table/sng-registry-*"
+    },
+    {
+      "Sid": "Function",
+      "Effect": "Allow",
+      "Action": "lambda:*",
+      "Resource": "arn:aws:lambda:*:879647290867:function:sng-registry*"
+    },
+    {
+      "Sid": "LogGroup",
+      "Effect": "Allow",
+      "Action": "logs:*",
+      "Resource": "arn:aws:logs:*:879647290867:log-group:/aws/lambda/sng-registry*"
+    },
+    {
+      "Sid": "LogGroupLookup",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "*"
+    },
+    {
+      "Sid": "Budget",
+      "Effect": "Allow",
+      "Action": "budgets:*",
+      "Resource": "arn:aws:budgets::879647290867:budget/sng-registry-*"
+    },
+    {
+      "Sid": "FunctionRoleOnlyWithBoundary",
+      "Effect": "Allow",
+      "Action": ["iam:CreateRole", "iam:PutRolePolicy"],
+      "Resource": "arn:aws:iam::879647290867:role/sng-registry-*",
+      "Condition": {
+        "StringEquals": { "iam:PermissionsBoundary": "arn:aws:iam::879647290867:policy/sng-registry-boundary" }
+      }
+    },
+    {
+      "Sid": "FunctionRoleUpkeep",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole", "iam:DeleteRole", "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy",
+        "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole"
+      ],
+      "Resource": "arn:aws:iam::879647290867:role/sng-registry-*"
+    },
+    {
+      "Sid": "PassFunctionRoleToLambdaOnly",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::879647290867:role/sng-registry-*",
+      "Condition": { "StringEquals": { "iam:PassedToService": "lambda.amazonaws.com" } }
+    }
+  ]
+}

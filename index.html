@@ -6,7 +6,11 @@
   or at what hour. This was a budget decision rather than a principle, but
   the effect is the same. Everything this site knows about you is in your own
   localStorage, under the keys beginning sng. You may read it. You may delete
-  it. There is no copy anywhere else, because there is nowhere else.
+  it. There is no copy anywhere else, with one exception you have to ask for:
+  a team register, opened from section 04, is held by the Office so that a
+  whole team sees one file. It holds designations from the public register
+  and the dates they were adopted - nothing typed, nothing about who - under
+  a number only the team has. The machinery is in api/ and infra/.
 
   Two files do the work: index.html and names.js. If you have a name worth
   adding, the corpus is in the second one and the house rules are in the
@@ -384,7 +388,7 @@ body{
 .stamp-no a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--rule)}
 .stamp-no a:hover{color:var(--accent);border-bottom-color:currentColor}
 
-/* The Office holds no copy of anything - see Form SN-02. This is the
+/* The Office holds no copy of the minutes - see Form SN-02. This is the
    visitor's own record, read back to them out of the browser it never
    left. Written into the markup with its idle values already in place:
    three lines that appear after first paint would shove the footer down
@@ -440,6 +444,68 @@ body{
 }
 .ghlink:hover{color:var(--ink)}
 .ghlink svg{display:block;width:14px;height:14px}
+
+/* ---------- team register ----------
+   The only part of the form that talks to anything. Present in the markup
+   from the start, idle copy included, for the same layout-shift reason as
+   the record above; only its controls come and go. */
+.registry{border-top:1px solid var(--rule-soft)}
+.reg-note{
+  margin:0 0 14px;
+  max-width:64ch;
+  font-size:.88rem;
+  line-height:1.55;
+  color:var(--ink-2);
+}
+.reg-file{margin:0 0 14px}
+.reg-file summary,
+.reg-actions,
+.reg-list .when,
+.reg-list .linkbtn{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  font-variant-numeric:tabular-nums;
+}
+.reg-file summary{cursor:pointer;color:var(--ink-2)}
+.reg-list{
+  list-style:none;
+  display:grid;
+  gap:6px;
+  margin:12px 0 0;
+  padding:0 0 0 clamp(12px,2.2vw,18px);
+  border-left:3px solid var(--accent);
+}
+.reg-list li{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
+.reg-list .when{color:var(--ink-3)}
+.reg-actions{display:flex;flex-wrap:wrap;gap:8px 22px}
+.reg-actions .linkbtn{color:var(--ink-2)}
+.reg-actions .linkbtn:hover{color:var(--ink)}
+.reg-import{display:grid;gap:10px;margin-top:16px;max-width:560px}
+.reg-import[hidden]{display:none}
+.reg-import label{font-size:.82rem;line-height:1.5;color:var(--ink-2)}
+.reg-import textarea{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.8rem;
+  line-height:1.6;
+  padding:10px 12px;
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid var(--rule);
+  border-radius:0;
+  resize:vertical;
+}
+.reg-import .btn{justify-self:start}
+.reg-status{
+  margin:12px 0 0;
+  min-height:1.2em;
+  max-width:64ch;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.72rem;
+  line-height:1.6;
+  color:var(--ink-2);
+}
 
 @media (prefers-reduced-motion:reduce){
   .name.is-stamped,.cline{animation:none}
@@ -505,6 +571,7 @@ body{
   <div class="actions">
     <button class="btn" id="convene">Convene committee</button>
     <button class="btn btn--ghost" id="copy" disabled>Copy</button>
+    <button class="btn btn--ghost" id="adopt" hidden disabled>File as adopted</button>
   </div>
 
   <ul class="record" id="record">
@@ -513,9 +580,33 @@ body{
     <li>Last review: <b id="rec-last">not recorded</b></li>
   </ul>
 
+  <section class="field registry" id="registry">
+    <div class="field-head">
+      <span class="field-label">04 / Team register</span>
+      <span class="readout" id="reg-readout">Not opened</span>
+    </div>
+    <p class="reg-note">The minutes above belong to this browser alone. A team register is the one file the Office keeps on anybody&#8217;s behalf: which designations a team actually adopted, and when, for everyone holding the link. It records names and dates. It does not record who.</p>
+    <details class="reg-file" id="reg-file" hidden>
+      <summary id="reg-summary">Nothing on file</summary>
+      <ol class="reg-list" id="reg-list"></ol>
+    </details>
+    <div class="reg-actions">
+      <button class="linkbtn" id="reg-open" type="button">Open a register</button>
+      <button class="linkbtn" id="reg-link" type="button" hidden>Copy register link</button>
+      <button class="linkbtn" id="reg-import-toggle" type="button" hidden aria-expanded="false" aria-controls="reg-import">File earlier adoptions</button>
+      <button class="linkbtn" id="reg-leave" type="button" hidden>Leave this register</button>
+    </div>
+    <div class="reg-import" id="reg-import" hidden>
+      <label for="reg-paste">One designation per line, as it appears on the board. Bullets, dates and remarks after the name are disregarded. Anything not on the public register is turned away at the counter.</label>
+      <textarea id="reg-paste" rows="6" spellcheck="false"></textarea>
+      <button class="btn btn--ghost" id="reg-import-file" type="button">File retrospectively</button>
+    </div>
+    <p class="reg-status" id="reg-status" aria-live="polite"></p>
+  </section>
+
   <footer class="fineprint">
     <a class="reglink" href="/funny-sprint-names">All <span id="corpus">385</span> sprint names on file</a>
-    <span>Minutes stored in this browser only. Nothing is transmitted.</span>
+    <span>Minutes stay in this browser. Team registers are held by the Office.</span>
     <button class="linkbtn" id="reset">Shred the minutes</button>
     <a class="ghlink" href="https://github.com/Jay-Way/sprint-name-generator"
        target="_blank" rel="noopener noreferrer"
@@ -608,6 +699,15 @@ const LIMIT_KEY = "sng.limit.v1";
    timestamps that turns a list into a record, kept separately so that
    shredding one shreds the other and neither can outlive the other. */
 const RECORD_KEY = "sng.record.v1";
+/* The team register - the one thing the Office holds on anybody's behalf,
+   see api/handler.mjs and Form SN-02. The address is the function URL that
+   `terraform apply` in infra/ prints. Left empty, section 04 is removed and
+   the form is exactly what it was before the registry existed. */
+const REGISTRY_API = "https://rkeyvo7j2uuovgt7xjmpbxr5gi0gymts.lambda-url.eu-central-1.on.aws";
+/* This browser's copy of the file: the token that opens it, and the last
+   contents the Office returned, so the generator can skip adopted names
+   before - or without - the network answering. */
+const REGISTRY_KEY = "sng.registry.v1";
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- office hours ----------
@@ -642,7 +742,21 @@ const el = {
   stamp: document.getElementById("stamp"),
   recCount: document.getElementById("rec-count"),
   recFirst: document.getElementById("rec-first"),
-  recLast: document.getElementById("rec-last")
+  recLast: document.getElementById("rec-last"),
+  adopt: document.getElementById("adopt"),
+  registry: document.getElementById("registry"),
+  regReadout: document.getElementById("reg-readout"),
+  regFile: document.getElementById("reg-file"),
+  regSummary: document.getElementById("reg-summary"),
+  regList: document.getElementById("reg-list"),
+  regOpen: document.getElementById("reg-open"),
+  regLink: document.getElementById("reg-link"),
+  regImportToggle: document.getElementById("reg-import-toggle"),
+  regLeave: document.getElementById("reg-leave"),
+  regImport: document.getElementById("reg-import"),
+  regPaste: document.getElementById("reg-paste"),
+  regImportFile: document.getElementById("reg-import-file"),
+  regStatus: document.getElementById("reg-status")
 };
 
 let genre = GENRES[0];
@@ -650,6 +764,8 @@ let limitIdx = 0;
 let current = null;
 let presses = 0;
 let busy = false;
+/* { token, adopted: { name: ms, or 0 if filed retrospectively }, opened } */
+let registry = null;
 
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -710,12 +826,16 @@ function showRecord(){
 
 /* Names in this genre that fit the current character limit. */
 function eligible(){ return genre.names.filter(n => n.length <= limit().max); }
-/* ...of those, the ones not yet issued. */
-function remaining(){ const u = used(); return eligible().filter(n => !u.includes(n)); }
+/* Adopted by the team: never offered again, by this browser or any other
+   holding the same file. Not counted as issued - that is this browser's
+   own minute, and reopening the register must not hand them back. */
+function adopted(n){ return !!registry && Object.prototype.hasOwnProperty.call(registry.adopted, n); }
+/* ...of those, the ones not yet issued or adopted. */
+function remaining(){ const u = used(); return eligible().filter(n => !u.includes(n) && !adopted(n)); }
 /* Unissued names that exist but are too long to be offered. */
 function blocked(){
   const u = used();
-  return genre.names.filter(n => n.length > limit().max && !u.includes(n)).length;
+  return genre.names.filter(n => n.length > limit().max && !u.includes(n) && !adopted(n)).length;
 }
 
 /* Three states, three things the main button can usefully do. */
@@ -788,6 +908,7 @@ function refresh(){
      so reporting it here as well would print the same words twice. */
   el.designationReadout.textContent = "Binding on all parties";
   showRecord();
+  showRegistry();
 }
 
 function showName(text, stamped){
@@ -875,6 +996,7 @@ async function convene(){
   busy = true;
   el.convene.disabled = true;
   el.copy.disabled = true;
+  el.adopt.disabled = true;
 
   await runCommittee();
 
@@ -917,6 +1039,252 @@ function fromHash(){
   return true;
 }
 
+/* ---------- the team register ---------- */
+
+function loadRegistry(){
+  try { registry = JSON.parse(localStorage.getItem(REGISTRY_KEY)) || null; } catch (e) { registry = null; }
+}
+function saveRegistry(){
+  try {
+    if (registry) localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
+    else localStorage.removeItem(REGISTRY_KEY);
+  } catch (e) {}
+}
+
+/* The file number on the folder. Eight characters of the token: enough to
+   tell two registers apart across a desk, nowhere near enough to open one. */
+const fileNo = t => (t.slice(0, 4) + "-" + t.slice(4, 8)).toUpperCase();
+const adoptedOn = ms => ms ? "adopted " + filed(ms) : "filed retrospectively";
+
+async function api(method, path, body){
+  const headers = {};
+  if (body) headers["content-type"] = "application/json";
+  if (registry) headers.authorization = "Bearer " + registry.token;
+  const res = await fetch(REGISTRY_API + path, {
+    method, headers, body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok){
+    const err = new Error(data.error || "HTTP " + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function regSay(text){ el.regStatus.textContent = text; }
+
+/* Every failure ends up here. A file that has gone is forgotten; anything
+   else leaves this browser's copy standing, since being unable to reach
+   the Office is not news that the file has changed. */
+function regFailed(e){
+  if (e.status === 404){
+    registry = null;
+    saveRegistry();
+    regSay("The Office holds no file under that number. It was never opened, or it lapsed and was shredded.");
+    refresh();
+    return;
+  }
+  regSay(e.status === 422
+    ? "Not one of those is on the public register. Nothing was filed."
+    : "The Office did not answer. Nothing was filed, and this browser’s last copy stands.");
+}
+
+function takeFile(data){
+  registry.adopted = data.adopted;
+  if (data.opened) registry.opened = data.opened;
+  saveRegistry();
+}
+
+/* Called from refresh(), like every other piece of chrome. */
+function showRegistry(){
+  const open = !!registry;
+  el.adopt.hidden = !open;
+  el.regOpen.hidden = open;
+  el.regLink.hidden = el.regImportToggle.hidden = el.regLeave.hidden = !open;
+  if (!open){
+    el.regImport.hidden = true;
+    el.regImportToggle.setAttribute("aria-expanded", "false");
+  }
+  el.regReadout.textContent = open ? "File no. " + fileNo(registry.token) : "Not opened";
+
+  const onFile = open && current && adopted(current);
+  el.adopt.disabled = !current || onFile || busy;
+  el.adopt.textContent = onFile ? "On file" : "File as adopted";
+
+  /* The designation's own meta row says so too - this is the line that
+     answers "didn't we already have that one?" */
+  const prior = el.meta.querySelector(".m-file");
+  if (prior) prior.remove();
+  if (onFile && el.meta.childElementCount){
+    el.meta.insertAdjacentHTML("beforeend",
+      '<span class="m-over m-file"><b>On file</b> ' + adoptedOn(registry.adopted[current]) + '</span>');
+  }
+
+  const names = open ? Object.keys(registry.adopted) : [];
+  el.regFile.hidden = !open;
+  el.regSummary.textContent = names.length
+    ? names.length + (names.length === 1 ? " designation" : " designations") + " on file"
+    : "Nothing on file";
+  /* Newest first; retrospective filings, which have no date, at the end. */
+  names.sort((a, b) => registry.adopted[b] - registry.adopted[a] || a.localeCompare(b));
+  el.regList.replaceChildren(...names.map(n => {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = n;
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = adoptedOn(registry.adopted[n]);
+    const out = document.createElement("button");
+    out.type = "button";
+    out.className = "linkbtn";
+    out.textContent = "Withdraw";
+    out.addEventListener("click", () => withdraw(n));
+    li.append(name, when, out);
+    return li;
+  }));
+}
+
+async function openRegister(){
+  el.regOpen.disabled = true;
+  try {
+    const data = await api("POST", "/registers");
+    registry = { token: data.token, adopted: {}, opened: data.opened };
+    saveRegistry();
+    regSay("File opened. Copy the link and send it to the team: whoever holds it can file and withdraw. The Office keeps no other way in.");
+  } catch (e) {
+    regFailed(e);
+  }
+  el.regOpen.disabled = false;
+  refresh();
+}
+
+async function fileAdopted(names, retrospective){
+  const data = await api("POST", "/register/adopted", { names, retrospective });
+  takeFile(data);
+  return data.rejected || [];
+}
+
+async function adoptCurrent(){
+  if (!registry || !current) return;
+  const name = current;
+  el.adopt.disabled = true;
+  try {
+    await fileAdopted([name], false);
+    regSay("“" + name + "” is on file as adopted. It will not be issued to this team again.");
+  } catch (e) {
+    regFailed(e);
+  }
+  refresh();
+}
+
+async function withdraw(name){
+  try {
+    takeFile(await api("DELETE", "/register/adopted", { name }));
+    regSay("“" + name + "” withdrawn from the file. It may be issued again.");
+  } catch (e) {
+    regFailed(e);
+  }
+  refresh();
+}
+
+/* Matching a pasted board against the register. Case, punctuation, curly
+   or straight quotes and a leading article are all ignored, and anything
+   after a full name - a date, a tick, "(used on 12 Feb)" - is disregarded,
+   with the longest name winning. Only the canonical spelling goes to the
+   Office, which accepts nothing else. */
+const fold = s => s.toLowerCase().replace(/[’‘'“”"]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim().replace(/^(the|a|an) /, "");
+function matchBoard(text){
+  const index = GENRES.flatMap(g => g.names.map(n => [fold(n), n]))
+    .sort((a, b) => b[0].length - a[0].length);
+  const found = new Set();
+  const unknown = [];
+  for (const raw of text.split("\n")){
+    const line = fold(raw);
+    if (!line) continue;
+    const hit = index.find(([f]) => line === f || line.startsWith(f + " "));
+    if (hit) found.add(hit[1]);
+    else unknown.push(raw.trim().replace(/^[-*•·\s]+/, ""));
+  }
+  return { found: [...found], unknown };
+}
+
+async function importBoard(){
+  const { found, unknown } = matchBoard(el.regPaste.value);
+  if (!found.length){
+    regSay(unknown.length
+      ? "Not one of those is on the public register. Nothing was filed."
+      : "Nothing was presented. Nothing was filed.");
+    return;
+  }
+  el.regImportFile.disabled = true;
+  try {
+    await fileAdopted(found, true);
+    el.regPaste.value = "";
+    regSay(found.length + (found.length === 1 ? " designation" : " designations") + " filed retrospectively."
+      + (unknown.length ? " Turned away, not being on the register: " + unknown.join("; ") + "." : ""));
+  } catch (e) {
+    regFailed(e);
+  }
+  el.regImportFile.disabled = false;
+  refresh();
+}
+
+/* #/register/<token> is how a team hands the file around. The hash never
+   reaches a server, and it is cleared from the address bar once read, so
+   the token does not linger in history or in the next screenshot. */
+function joinFromHash(){
+  const m = location.hash.match(/^#\/register\/([A-Za-z0-9_-]{32})$/);
+  if (!m) return false;
+  history.replaceState(null, "", location.pathname + location.search);
+  if (!registry || registry.token !== m[1]){
+    registry = { token: m[1], adopted: {}, opened: null };
+    saveRegistry();
+    regSay("File no. " + fileNo(m[1]) + " received. Retrieving its contents.");
+  }
+  return true;
+}
+
+async function syncRegistry(){
+  if (!registry) return;
+  try {
+    takeFile(await api("GET", "/register"));
+    if (el.regStatus.textContent.endsWith("Retrieving its contents.")) regSay("");
+  } catch (e) {
+    if (e.status === 404) regFailed(e);
+    else regSay("The Office did not answer. Working from this browser’s last copy of the file.");
+  }
+  refresh();
+}
+
+el.adopt.addEventListener("click", adoptCurrent);
+el.regOpen.addEventListener("click", openRegister);
+el.regImportFile.addEventListener("click", importBoard);
+el.regImportToggle.addEventListener("click", () => {
+  el.regImport.hidden = !el.regImport.hidden;
+  el.regImportToggle.setAttribute("aria-expanded", String(!el.regImport.hidden));
+  if (!el.regImport.hidden) el.regPaste.focus();
+});
+el.regLink.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(location.origin + "/#/register/" + registry.token);
+    el.regLink.textContent = "Link copied";
+  } catch (e) {
+    el.regLink.textContent = "Copy failed";
+  }
+  setTimeout(() => { el.regLink.textContent = "Copy register link"; }, 1400);
+});
+/* The file stays with the Office for whoever else holds the link. If
+   nobody does, this is the last copy of the number that opens it. */
+el.regLeave.addEventListener("click", () => {
+  if (!confirm("Leave this register? If nobody else holds the link, the file cannot be opened again.")) return;
+  registry = null;
+  saveRegistry();
+  regSay("This browser no longer holds the file. The file itself remains with the Office.");
+  refresh();
+});
+
 el.convene.addEventListener("click", convene);
 
 el.copy.addEventListener("click", async () => {
@@ -948,7 +1316,15 @@ if (outside) {
 
 buildChips();
 loadLimit();
+if (REGISTRY_API){
+  loadRegistry();
+  joinFromHash();
+} else {
+  el.registry.remove();
+  el.adopt.remove();
+}
 if (!fromHash()) refresh();
+syncRegistry();
 
 </script>
 </body>
