@@ -1130,6 +1130,9 @@ function roomAt(id, R, seed, open, weekend) {
 
   if (d === open + 1) {
     if (m[2] !== "landing") return unknown();
+    /* The bottom: the level after the last line of the threads, once every
+       level above it is open. Records without referents - so nothing. */
+    if (d === R.levels.length + 1 && open === R.levels.length) return room("bottom", "", "", "", "", []);
     return room("closed", "Landing", R.closed.name, sub(R.closed.text), sub(R.closed.notice),
       [{ label: "Stairs up", to: "b" + (d - 1) + "/landing" }]);
   }
@@ -1144,11 +1147,16 @@ function roomAt(id, R, seed, open, weekend) {
   const fixedHere = Object.keys(R.fixed).filter(k => R.fixed[k].d === d);
 
   if (m[2] === "landing") {
+    /* False stairs arrive two corridors along from the service stairs -
+       never at corridor 0, which the landing also links to: two doors to
+       the same place would give the trick away. */
+    let fake = (lv.stairsAt + 2) % lv.corridors.length;
+    if (fake === 0) fake = 1;
     /* The landing carries the threads: every level is entered here, so
        every visitor reads them, one line per level, in order. */
     const level = R.levels[Math.min(d, R.levels.length) - 1];
     const exits = [
-      { label: "Stairs down", to: lv.fakeDown ? cid(lv.corridors[(lv.stairsAt + 2) % lv.corridors.length]) : "b" + (d + 1) + "/landing" },
+      { label: "Stairs down", to: lv.fakeDown ? cid(lv.corridors[fake]) : "b" + (d + 1) + "/landing" },
       { label: "Stairs up", to: d === 1 ? "/" : "b" + (d - 1) + "/landing" },
       corridorLink(lv.corridors[0]),
       { label: "Lift", to: null, note: level.lift }
@@ -1209,6 +1217,7 @@ function roomAt(id, R, seed, open, weekend) {
    which IDEAS.md has reserved. U+2212 for the minus: the hyphen reads as
    a dash at this size. */
 function rStamp(room) {
+  if (room.kind === "bottom") return [];
   const rev = room.d <= 3 ? 4 : 7 - room.d;
   return [
     "Records and Retention",
@@ -1220,6 +1229,12 @@ function rStamp(room) {
 /* `file` is markup for one extra field after the location - the personnel
    file on B8, which only the browser can fill in. */
 function renderRoom(room, file) {
+  /* The masthead and the ruled paper, and nothing else. The heading is
+     for screen readers, which should be told where they are, and nothing
+     more than sighted visitors are. */
+  if (room.kind === "bottom") {
+    return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
+  }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   /* The form comes apart in the markup as well as the styles: from B7 the
      readouts are left blank, from B10 the fields lose their numbers. */
@@ -1327,6 +1342,9 @@ function renderRoom(room, file) {
     if (room.kind === "unknown") throw new Error("build: the basement links to " + id + ", which is not on the plan.");
     if (doors(roomAt(id, RECORDS, RECORDS_SEED, RECORDS_OPEN, true)) !== doors(room)) throw new Error(
       "build: basement room " + id + " has different exits at the weekend. Words may change; doors may not.");
+    const targets = room.exits.filter(x => x.to && x.to !== id).map(x => x.to);
+    if (new Set(targets).size !== targets.length) throw new Error(
+      "build: basement room " + id + " has two doors to the same place, which gives away whichever one is lying.");
     rooms.set(id, room);
     for (const x of room.exits) if (x.to && x.to !== "/") queue.push(x.to);
   }
@@ -1363,6 +1381,13 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+
+/* B13. The sheet goes, so the ruled paper behind it is all there is, and
+   there is more of it than anything would need. */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.bottom{min-height:300vh}
+:root[data-band="5"] .sheet{background:transparent;border-color:transparent;box-shadow:none !important}
+:root[data-band="5"] .fineprint{display:none}
 
 /* The personnel file: genre as a filing tab, names under it. */
 .file{margin:4px 0 0}
@@ -1475,22 +1500,36 @@ function personnelFile() {
   /* The visitor's own calendar, as with officeShift() on the form. */
   const weekend = [0, 6].includes(new Date().getDay());
   if (weekend) root.dataset.weekend = "";
+  /* The only thing the basement keeps: the deepest level this browser has
+     reached, and when. In this browser's storage, like everything else
+     the site knows; the form reads it for its seal, and shredding the
+     minutes removes it. */
+  const RETENTION_KEY = "sng.retention.v1";
+  let deepest = 0;
+  try { deepest = (JSON.parse(localStorage.getItem(RETENTION_KEY)) || {}).deepest || 0; } catch (e) { deepest = 0; }
   function show(moved) {
     const m = location.hash.match(/^#\\/(.+)$/);
     const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
+    /* Somebody who has been far enough down to be treated as staff is
+       not asked to sign in again. */
+    if (room.id === "b1/landing" && deepest >= 7) room.notice = RECORDS.welcomeBack;
+    if (room.d > deepest) {
+      deepest = room.d;
+      try { localStorage.setItem(RETENTION_KEY, JSON.stringify({ deepest, at: Date.now() })); } catch (e) { /* the basement forgets */ }
+    }
     host.innerHTML = renderRoom(room, room.id === "b8/personnel" ? personnelFile() : "");
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
-    root.dataset.band = String(room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
-    document.title = room.name + " \\u2014 Records and Retention";
+    root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
+    document.title = (room.name ? room.name + " \\u2014 " : "") + "Records and Retention";
     if (moved) {
       window.scrollTo(0, 0);
       document.getElementById("room-title").focus({ preventScroll: true });
     }
   }
   addEventListener("hashchange", () => show(true));
-  /* B1 is already in the markup, as a weekday. */
-  if (location.hash || weekend) show(false);
+  /* B1 is already in the markup, as a weekday, for a first visit. */
+  if (location.hash || weekend || deepest >= 7) show(false);
 })();
 </script>
 `

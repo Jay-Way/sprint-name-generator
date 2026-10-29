@@ -1,8 +1,8 @@
 # Records and Retention — the basement
 
-Status: **phases 1–3 built** (generator, building inspection, source-comment
+Status: **phases 1–5 built** (generator, building inspection, source-comment
 entrance; decay and weekend view). Texts for B1–B12 and the weekend signed off on
-29 Oct 2026. Open: B1–B12 (`RECORDS_OPEN = 12`); B13 shows *Access Closed* until phase 5. Supersedes nothing in `IDEAS.md`;
+29 Oct 2026. Open: B1–B12 (`RECORDS_OPEN = 12`) and the bottom, B13. Supersedes nothing in `IDEAS.md`;
 the escalation puzzle stays on ice and is kept clear of (see *Collisions*).
 
 ## Decisions (27 Oct 2026)
@@ -373,8 +373,16 @@ Each phase ships on its own and leaves the site coherent.
    script reads `sng.seen.v1` and `sng.record.v1`, read-only; the page
    source carries the comment saying so. Rendered as an extra *File* field
    on `#/b8/personnel`; the summary line is a draft.
-5. **The bottom and the mark.** B13, `sng.retention.v1`, *Welcome back.*,
-   the seal line, shredding takes it.
+5. **The bottom and the mark.** Done (29 Oct). B13 renders as the masthead
+   on bare ruled paper (no seal, no footer, a heading for screen readers
+   only). `sng.retention.v1` keeps `{ deepest, at }`; reception says
+   *Welcome back.* from a deepest of B7; the form's seal reads *Retained ·
+   B13* once the bottom has been reached; *Shred the minutes* removes it.
+   B13 is reachable by typing its address, which a curious developer will
+   do. That is accepted: the address is the reward for reading the source.
+   Also fixed: false stairs could arrive at corridor 0, which the landing
+   links to as well, giving the trick away. The building inspection now
+   fails any room with two doors to the same place.
 6. **More entrances.** After-hours link, then Form SN-03's service stairs.
 
 ---
