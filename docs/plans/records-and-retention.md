@@ -291,8 +291,8 @@ the visitor's resignation has been rejected.
   no footer, no lift. The grid continues further than the content would need.
   The back button works; nothing on the page suggests using it.
 
-B13 is empty *for now*. If it ever gets something, the parked candidate is a
-single line: *Your replacement has been requested.*
+B13 is empty *for now*. The candidates for what it becomes are in *Endings
+under consideration* below.
 
 ### The mark
 
@@ -390,11 +390,133 @@ Each phase ships on its own and leaves the site coherent.
 
 ---
 
+## Eras (29 Oct 2026)
+
+Decided after phase 2, and replacing "subtle" below B6: the descent goes
+through older and older editions of the same form, as Portal 2 goes down
+through Aperture's decades. Revisions already count backwards, so the
+paperwork follows them. CSS only, system Courier and Georgia, no images.
+
+| Levels | Edition | Look |
+|---|---|---|
+| B1–B3 | Rev. 4 | Today's form |
+| B4–B6 | Rev. 3 | Continuous stationery: perforated margins, typewriter copy, blue misregistration; scales with depth, barely there at B4 |
+| B7–B9 | Rev. 1–0 | Spirit duplicator: violet bled ink, yellowed paper, a water stain, one part of the form come loose |
+| B10–B12 | Rev. −1 to −4 | Before the Office: ledger stripes, clerk's serif, brown ink, a torn foot, sections slipped or faded |
+
+Which part has come loose and where the water got in are drawn from the
+room's seed, last, so a room is broken the same way on every visit and
+nothing drawn before them moved.
+
+## Specials (29 Oct 2026)
+
+Rooms that do something, judged against what made the personnel file work:
+it is about the visitor, it is true, it is unexpected, it explains nothing.
+Built, texts in draft:
+
+| Room | Where | What it does |
+|---|---|---|
+| Ticket machine | B1 reception | *Take a number* issues a seven-digit number, kept in `sng.ticket.v1` and shredded with the minutes. *Now serving: 0.* Reserved as the set-up for B13 |
+| Departmental Records | `#/b3/department` | Reads this browser's copy of the team register (never the network): file number and the team's adoptions. Only the first eight characters of the token are ever shown |
+| Time and Attendance | `#/b5/timecard` | Clocked in at the first room of this visit (session storage); time on premises ticks live. Out of hours: recorded as overtime |
+| Committee Room | `#/b6/committee` | The form's own committee session, with `PROCEDURE` lifted from `index.html` by `build.js`, ending in the form's empty result: *No designation issued* |
+| The Long Corridor | `#/b7/long` | A passage from one corridor to the next, three and a half screens long, with its notice posted halfway |
+
+| Security Desk | `#/b1/badge` | A visitor badge printed from what the browser tells every site anyway: time zone (as a city), language, system, display, battery where offered. The visitor may give a name; otherwise a staff number. Only name, number and time of issue are kept (`sng.badge.v1`, shredded with the minutes). No IP address: that would need a server, would make SN-02 and the footer untrue, and is the threatening gesture the basement is built to avoid |
+
+Two rooms with something impossible about them, recorded flatly:
+
+| Room | Where | What it does |
+|---|---|---|
+| Office with a Window | `#/b10/window` | A window on B10 showing the sky as it is outside now, by the visitor's clock: night, dawn, day or dusk. The one room that changes with the time of day, by decision |
+| Storage (External) | `#/b12/meadow` | The door opens on a meadow. No form, no masthead: an overexposed field, an office chair, a door frame standing in the grass, one line, and the way back. Drawn as inline SVG (`MEADOW_SVG` in `build.js`); a painted image may replace it |
+
+Special rooms are exempt from the per-room flaws, which would otherwise fade
+or tilt the very thing the room is for.
+
+## Endings under consideration (29 Oct 2026)
+
+Nothing here is decided or built. Three candidates, which can be combined.
+
+### A. The visitor is Klaus (the owner's idea)
+
+The visitor has been Klaus all along, and does not remember. Nothing says
+so. At the bottom, wherever the site would show the visitor's name, it
+shows *Klaus* instead — whatever name they gave, or the staff number they
+were issued — and goes on doing so after they climb back up.
+
+**It is already seeded, mostly by accident**, which is what makes it work:
+
+| Already in the building | Read again |
+|---|---|
+| *Approved by Klaus* on designations issued by the form upstairs | The visitor has been approving their own designations |
+| The cleaning rota: Klaus, every day | Nobody else works here |
+| *Klaus has approved the revised procedure. Klaus has not been consulted.* | He does not remember approving it |
+| *Klaus has been notified of your arrival. This is not a warning.* | He notified himself |
+| *Weekend cover: Klaus.* | The visitor, there on a weekend |
+| Office of K.: half a cup of tea, *Back shortly. Please do not wait.* | He did come back |
+| The status thread: visitor → staff → resignation refused | It was never a visit |
+| *Your personnel file has been opened. It was already open.* | Yes |
+| *Incident MORT-23554 should not be repeated.* (Department of Answers) | The thing he cannot remember. Never explained |
+
+**The forgetting already exists, and the visitor operates it.** *Shred the
+minutes* wipes the record, the retention mark and the badge. After a shred,
+the visitor is a visitor again and the building lets them sign in as if for
+the first time. The building does not have to make Klaus forget; the form
+has a button for it, labelled in plain sight. That is the loop.
+
+Where the name would change:
+
+- the badge on the Security Desk (`sng.badge.v1`): the name line reads *Klaus*
+- reception: *Welcome back, Klaus.*
+- the personnel file on B8: *Personnel — Klaus*
+- upstairs, *Approved by* on every designation: always *Klaus*, no longer
+  drawn from `SIGNATORIES`
+- Office of K. on a later visit: the cup washed and turned over, the note gone
+
+**How it stays inside rule 0.** No line ever says "you are Klaus". There is
+no reveal screen, no explanation, no backstory for MORT-23554. The name
+simply changes, without comment, in the places where a name is shown. A
+visitor who notices understands; one who does not has still been renamed.
+
+**Risks.** It is the most explanation-shaped ending of the three — the kind
+of twist the review warned against — so the restraint above is the whole
+design. It also meets the parked puzzle in `IDEAS.md`, whose countersignature
+answer is *Klaus*: if the visitor is Klaus, signing as Klaus is not forgery.
+That fits, but the two should be designed together if the puzzle comes back.
+
+### B. Your number is called
+
+B13 stays bare ruled paper, longer than the screen. At the very end of it,
+one line: *Now serving: 9 703 998.* — the number from the ticket machine at
+reception. A visitor who never took one reads *Now serving: 0.* No exit.
+It closes the thread that began at B1, and resolves nothing.
+
+### C. The newest edition
+
+Every level down has been an older edition of the form. B13 breaks the
+pattern: a pristine form, cleaner and newer than the one at the front desk,
+every field correctly filled in, signed at the foot. The descent ends not
+in the oldest paperwork but in the next revision.
+
+**Collision:** `IDEAS.md` reserves *Rev. 5* for the clearance puzzle. Either
+the two are the same document — clearance and the bottom both make the
+visitor staff — or this edition carries no number (*Rev. —*) or calls
+itself final (*Rev. 4, Final*).
+
+### Combinations
+
+- **A + C:** the newest edition, signed at the foot *Approved by Klaus* —
+  the first place the visitor sees the name where theirs should be. From
+  then on, A everywhere.
+- **A + B:** *Now serving: 9 703 998. Klaus, please.*
+- *Your replacement has been requested.*, the review's line, is retired if A
+  is chosen: Klaus has no replacement, which is the point.
+
 ## Open questions
 
 - **Share-ability.** Room links are stable, so people will pass around "go to
   B8/personnel". That is probably good. It means fixed rooms must stay at the
   same address for every build that keeps the seed, so changing the seed is a
   breaking change and should be treated as one.
-- **B13.** Empty for now; *Your replacement has been requested.* is parked
-  for it.
+- **B13.** Empty for now; see *Endings under consideration*.

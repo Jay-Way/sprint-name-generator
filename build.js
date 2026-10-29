@@ -37,6 +37,9 @@ const lift = (re, label) => {
 };
 const styleBlock = lift(/<style>[\s\S]*?<\/style>/, "the <style> block");
 const LIMITS = eval(lift(/const LIMITS = \[[\s\S]*?\];/, "the LIMITS table") + " LIMITS;");
+/* The committee's procedure, for the Committee Room in the basement, which
+   must run the same session the form does. */
+const PROCEDURE = eval(lift(/const PROCEDURE = \[[\s\S]*?\];/, "the PROCEDURE list") + " PROCEDURE;");
 const faviconLink = lift(/<link rel="icon"[^>]*>/, "the favicon");
 
 /* The @font-face rules ride along inside styleBlock. What differs per page is
@@ -1119,8 +1122,12 @@ function roomAt(id, R, seed, open, weekend) {
   const no = d <= 3 ? 5 + (d - 1) * 3 : 5 + (d - 1) * 3 + Math.floor(r() * (d - 3) * 9);
   /* From B7 a corridor may hold one line of committee log with no
      committee - the procedure from the front desk, running unattended. */
+  /* The last draws from r(), so that adding them moved nothing that was
+     drawn before: `flaw` picks which part of an old form has come loose,
+     sx/sy where the water got in. */
   const room = (kind, place, name, text, notice, exits) =>
-    ({ id, d, no, kind, place, name, text, notice, exits, log: kind === "corridor" && d >= 7 && r() < 0.35 });
+    ({ id, d, no, kind, place, name, text, notice, exits, log: kind === "corridor" && d >= 7 && r() < 0.35,
+      flaw: Math.floor(r() * 4), sx: 15 + Math.floor(r() * 70), sy: 10 + Math.floor(r() * 60) });
   const unknown = () => ({
     id, d: 0, no: 0, kind: "unknown", place: "Unplanned",
     name: R.unknown.name, text: R.unknown.text, notice: R.unknown.notice,
@@ -1162,14 +1169,18 @@ function roomAt(id, R, seed, open, weekend) {
       { label: "Lift", to: null, note: level.lift }
     ];
     return d === 1
-      ? room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits)
+      ? Object.assign(room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits), { special: "ticket" })
       : room("landing", "Landing", "Landing, B" + d, sub(rPick(r, band.landing)), level.status, exits);
   }
 
   if (!m[3] && !m[4]) {
     const f = R.fixed[m[2]];
     if (!f || f.d !== d) return unknown();
-    return room("fixed", "Office", f.name, f.text, f.notice, [corridorLink(lv.corridors[f.at])]);
+    /* A `through` room is a passage: in from one corridor, out to the next. */
+    const exits = [corridorLink(lv.corridors[f.at])];
+    if (f.exit) exits[0].label = f.exit;
+    if (f.through) exits.push(corridorLink(lv.corridors[(f.at + 1) % lv.corridors.length]));
+    return Object.assign(room("fixed", f.through ? "Passage" : "Office", f.name, f.text, f.notice, exits), { special: f.special || "" });
   }
 
   if (m[3]) {
@@ -1226,14 +1237,35 @@ function rStamp(room) {
   ];
 }
 
-/* `file` is markup for one extra field after the location - the personnel
-   file on B8, which only the browser can fill in. */
-function renderRoom(room, file) {
+/* The ticket field at reception. Pure, like the rest, so that B1 can be
+   rendered at build time with the machine still unused. */
+function rTicket(R, n) {
+  return {
+    label: "Ticket",
+    readout: n ? "Issued" : "Dispenser",
+    html: n
+      ? '<p class="blurb">' + R.ticket.taken.replace("{n}", String(n).replace(/\B(?=(\d{3})+$)/g, "\u2009")) + "</p>"
+      : '<p class="blurb">' + R.ticket.none + '</p><button class="btn btn--ghost ticket" type="button" id="take-number">' + R.ticket.button + "</button>"
+  };
+}
+
+/* `extra` is one more field after the location - { label, readout, html }
+   - for the rooms only the browser can fill in: the personnel file, the
+   ticket machine, the timecard, the committee in session. */
+function renderRoom(room, extra) {
   /* The masthead and the ruled paper, and nothing else. The heading is
      for screen readers, which should be told where they are, and nothing
      more than sighted visitors are. */
   if (room.kind === "bottom") {
     return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
+  }
+  /* Through the door marked Storage (External): no form at all. The scene
+     itself is MEADOW_SVG, put in place by the page script. */
+  if (room.special === "meadow") {
+    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow" aria-hidden="true"></div>'
+      + (room.notice ? '<p class="meadow-notice">' + room.notice + "</p>" : "")
+      + '<div class="meadow-caption"><p>' + room.text + '</p><nav class="exits meadow-exit" aria-label="Exits">'
+      + room.exits.map(x => '<a href="#/' + x.to + '">' + x.label + "</a>").join("") + "</nav></div>";
   }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   /* The form comes apart in the markup as well as the styles: from B7 the
@@ -1248,11 +1280,16 @@ function renderRoom(room, file) {
     + (room.log ? '<div class="ghost-log" aria-hidden="true"><div class="cline"><span>01</span>Convening committee&hellip;</div></div>' : "")
     + "</section>";
   let k = 1;
-  if (file) html += '<section class="field section">' + head(k++, "File", "Provisional") + file + "</section>";
+  if (extra) html += '<section class="field section">' + head(k++, extra.label, extra.readout) + extra.html + "</section>";
+  /* The Long Corridor is long: the notice is posted halfway along it. */
+  const long = room.special === "long" ? '<div class="long" aria-hidden="true"></div>' : "";
+  /* ...and halfway along it, a red line across the floor and both walls. */
+  html += long + (long ? '<div class="red-line" aria-hidden="true"></div>' : "");
   if (room.notice) {
     html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
   }
+  html += long;
   html += '<section class="field">' + head(k, "Exits", room.exits.length + " marked")
     + '<nav class="toc exits" aria-label="Exits">' + room.exits.map(x => x.to
       ? '<a href="' + (x.to === "/" ? "/" : "#/" + x.to) + '">' + e(x.label) + "</a>"
@@ -1308,6 +1345,17 @@ function renderRoom(room, file) {
     text(f.name, "fixed." + k + ".name");
     text(f.text, "fixed." + k + ".text");
   }
+
+  /* Specials are filled in by the page script, which knows these. */
+  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [], window: [], meadow: ["exit"],
+    badge: ["prompt", "button", "lost", "photo", "header", "undisclosed"] };
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (!f.special) continue;
+    if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
+    for (const t of SPECIAL_ROOMS[f.special]) text(f[t], "fixed." + k + "." + t);
+  }
+  for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
+  for (const t of ["issued", "from", "reads", "uses", "display", "battery"]) text((RECORDS.fixed.badge.labels || {})[t], "fixed.badge.labels." + t);
 
   /* The page script reads these two by name. */
   if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
@@ -1366,6 +1414,38 @@ function renderRoom(room, file) {
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
 
+/* The meadow. Drawn rather than photographed so it ships in the page;
+   if a painted one replaces it, it replaces this string and nothing else.
+   Overexposed on purpose - a memory of a field, not a field. */
+const MEADOW_SVG = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="presentation">
+<defs>
+<linearGradient id="m-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9EC7EE"/><stop offset=".55" stop-color="#E2EBF8"/><stop offset=".7" stop-color="#FBF1E6"/></linearGradient>
+<radialGradient id="m-sun"><stop offset="0" stop-color="#FFFDF4"/><stop offset=".35" stop-color="#FFFDF4" stop-opacity=".7"/><stop offset="1" stop-color="#FFFDF4" stop-opacity="0"/></radialGradient>
+<linearGradient id="m-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CDE9A4"/><stop offset="1" stop-color="#86C463"/></linearGradient>
+<linearGradient id="m-haze" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".7" stop-color="#FFFFFF" stop-opacity=".6"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+<filter id="m-soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#m-sky)"/>
+<circle cx="1020" cy="290" r="320" fill="url(#m-sun)"/>
+<g class="m-clouds" filter="url(#m-soft)" fill="#FFFFFF" opacity=".85"><ellipse cx="300" cy="200" rx="190" ry="40"/><ellipse cx="430" cy="178" rx="120" ry="34"/><ellipse cx="960" cy="140" rx="220" ry="38"/><ellipse cx="1420" cy="232" rx="160" ry="30"/></g>
+<path d="M0 622 C 300 592 520 602 800 612 S 1300 596 1600 606 L1600 900 L0 900Z" fill="#D9ECC4"/>
+<path d="M0 662 C 400 642 900 652 1600 642 L1600 900 L0 900Z" fill="url(#m-grass)"/>
+<rect width="1600" height="900" fill="url(#m-haze)"/>
+<g transform="translate(915 566)"><rect width="30" height="66" fill="#3A3F48"/><rect x="-3" y="-3" width="36" height="72" fill="none" stroke="#F5F1E8" stroke-width="4"/></g>
+<ellipse cx="690" cy="668" rx="84" ry="8" fill="#6FA650" opacity=".45"/>
+<g transform="translate(690 664)" fill="#5E6672"><rect x="-72" y="-58" width="144" height="8" rx="2"/><rect x="-66" y="-50" width="7" height="50"/><rect x="59" y="-50" width="7" height="50"/><rect x="18" y="-50" width="41" height="30"/><rect x="34" y="-38" width="10" height="3" fill="#7A828E"/>
+<g transform="translate(-34 -58)"><rect x="-4" y="-17" width="40" height="17" rx="4" fill="#3B4049"/><rect x="-8" y="-24" width="48" height="8" rx="4" fill="#3B4049"/><g class="m-light"><circle cx="28" cy="-8" r="10" fill="#FF3B30" opacity=".22"/><circle cx="28" cy="-8" r="3.6" fill="#FF3B30"/></g></g></g>
+</svg>`;
+
+/* The torn foot of a form older than the Office: a fixed ragged edge, the
+   same on every page, because it is the same sheet. */
+const TORN = (() => {
+  const r = rRng(rHash("torn"));
+  const pts = ["0 0", "100% 0"];
+  for (let x = 100; x >= 0; x -= 2.5) pts.push(x + "% calc(100% - " + (r() * 9).toFixed(1) + "px)");
+  return "polygon(" + pts.join(", ") + ")";
+})();
+
 const RECORDS_CSS = `
 /* ---------- Records and Retention only ---------- */
 .exits{margin-top:4px}
@@ -1381,6 +1461,143 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+/* The visitor badge, B1. */
+.badge-form{display:grid;gap:10px;max-width:360px;margin-top:6px}
+.badge-input{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.85rem;
+  padding:10px 12px;
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid var(--rule);
+  border-radius:0;
+}
+.badge-form .btn{justify-self:start}
+.badge{
+  display:grid;
+  grid-template-columns:72px 1fr;
+  gap:14px 16px;
+  max-width:400px;
+  margin-top:6px;
+  padding:0 16px 16px;
+  border:1px solid var(--rule);
+  background:color-mix(in oklab, var(--sheet), var(--paper) 50%);
+}
+.badge-head{
+  grid-column:1 / -1;
+  margin:0 -16px;
+  padding:6px 16px;
+  background:var(--accent);
+  color:var(--on-accent);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.64rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.badge-photo{
+  height:90px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.52rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  text-align:center;
+  color:var(--ink-3);
+}
+.badge-name{font-family:"Archivo Black","Arial Black",sans-serif;font-size:1.3rem;line-height:1.05;letter-spacing:-.02em;overflow-wrap:anywhere}
+.badge-facts{grid-column:1 / -1;display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:.82rem}
+.badge-facts dt{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+.badge-facts dd{margin:0;color:var(--ink-2)}
+.badge .linkbtn{grid-column:1 / -1;justify-self:start;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
+
+/* The window on B10: the sky as it is outside, by the visitor's clock. */
+.window{
+  position:relative;
+  max-width:440px;
+  aspect-ratio:4/3;
+  margin-top:6px;
+  border:12px solid color-mix(in oklab, var(--sheet), var(--ink) 18%);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.18);
+}
+.window::before,.window::after{content:"";position:absolute;background:color-mix(in oklab, var(--sheet), var(--ink) 18%)}
+.window::before{left:calc(50% - 4px);top:0;bottom:0;width:8px}
+.window::after{top:calc(45% - 4px);left:0;right:0;height:8px}
+.window[data-sky="day"]{background:radial-gradient(ellipse 30% 12% at 30% 30%, rgba(255,255,255,.9), transparent), radial-gradient(ellipse 24% 9% at 72% 22%, rgba(255,255,255,.75), transparent), linear-gradient(#5E9BD6, #CFE6F7)}
+.window[data-sky="dawn"]{background:linear-gradient(#2E3A66, #B9849E 55%, #F6D29B)}
+.window[data-sky="dusk"]{background:linear-gradient(#2B2A57, #C2618A 55%, #F2A65A)}
+.window[data-sky="night"]{background:radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 62% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 52%, #fff, transparent), radial-gradient(1px 1px at 38% 66%, #fff, transparent), radial-gradient(1px 1px at 12% 74%, #fff, transparent), linear-gradient(#070B1E, #1C2347)}
+
+/* Storage (External). The form is not here: no sheet, no masthead, no
+   footer, only the field and the way back. Stays bright in dark mode -
+   it is not part of the building's lighting. */
+:root[data-scene="meadow"] body{background:#CFE3F5;padding:0;animation:none}
+:root[data-scene="meadow"] .sheet{background:transparent;border:0;box-shadow:none !important;clip-path:none;max-width:none}
+:root[data-scene="meadow"] .masthead,:root[data-scene="meadow"] .fineprint{display:none}
+.meadow{position:fixed;inset:0;z-index:0}
+.meadow svg{display:block;width:100%;height:100%;filter:saturate(1.12) brightness(1.04)}
+.m-clouds{animation:drift 90s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(-70px)}}
+/* Up in the empty sky, so the desk stays in view below it. */
+.meadow-caption{
+  position:fixed;left:0;right:0;top:max(9vh, 48px);z-index:1;
+  max-width:60ch;
+  margin:0 auto;
+  padding:0 16px;
+  text-align:center;
+  font-size:.95rem;
+  line-height:1.55;
+  color:#46525E;
+}
+/* The containment notice, small, on a sign at the edge of the field. */
+.meadow-notice{
+  position:fixed;bottom:16px;left:16px;z-index:1;
+  max-width:280px;
+  margin:0;
+  padding:8px 10px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(70,82,94,.3);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.6rem;
+  line-height:1.55;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#46525E;
+}
+/* The telephone. You cannot hear it. */
+.m-light{animation:blink 1.4s steps(1) infinite}
+@keyframes blink{50%{opacity:.12}}
+.meadow-caption p{margin:0 0 14px}
+.meadow-exit{display:flex;justify-content:center}
+.meadow-exit a{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#46525E;
+  text-decoration:underline;
+  text-underline-offset:4px;
+}
+@media (prefers-reduced-motion:reduce){.m-clouds,.m-light{animation:none}}
+
+/* The Long Corridor: the page is the length of it. */
+.long{height:140vh}
+/* Painted across the sheet and on past its edges to the walls of the
+   window. A spread shadow, clipped back to the line's own height, so the
+   page gains no horizontal scroll. */
+.red-line{
+  height:6px;
+  background:#B3261E;
+  box-shadow:0 0 0 100vmax #B3261E;
+  clip-path:inset(0 -100vmax);
+  opacity:.88;
+}
+.ticket{margin-top:6px}
+
+/* Arriving somewhere, including back where you were. */
+#room.arrive{animation:arrive .32s ease both}
+@keyframes arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#room.arrive{animation:none}}
 
 /* B13. The sheet goes, so the ruled paper behind it is all there is, and
    there is more of it than anything would need. */
@@ -1437,7 +1654,79 @@ body{background-position:0 calc(var(--depth, 0) * 11px)}
 /* B10-B12: no rules between fields; what is left of the form is labels. */
 [data-band="4"] .field + .field{border-top-color:transparent}
 [data-band="4"] .field:nth-child(odd) .field-head{translate:5px 0}
-[data-band="4"] .lede{color:var(--ink-3)}
+
+/* ---------- Eras ----------
+   Revisions count backwards on the way down, so the paperwork gets older:
+   the same form, in the editions that came before it. Each era is the
+   form as it was printed then, and printed badly. No new fonts: the
+   period type is whatever the visitor's system has for Courier and
+   Georgia, which is what period type looks like now anyway.
+
+   Rev. 3, B4-B6 - continuous stationery and a tired ribbon. Barely there
+   at B4 and settling in by B6: everything here scales with --depth. */
+[data-band="2"] .sheet{position:relative}
+[data-band="2"] .sheet::before,[data-band="2"] .sheet::after{
+  content:"";
+  position:absolute;
+  top:0;bottom:0;
+  width:14px;
+  background:radial-gradient(circle at 7px 12px, var(--paper) 3.2px, transparent 3.8px) 0 0/14px 24px repeat-y;
+  opacity:calc((var(--depth, 0) - .2) * 4);
+  pointer-events:none;
+}
+[data-band="2"] .sheet::before{left:3px}
+[data-band="2"] .sheet::after{right:3px}
+[data-band="2"] .lede,[data-band="2"] .blurb{
+  font-family:"Courier New",Courier,ui-monospace,monospace;
+  font-size:1.02rem;
+  text-shadow:calc(var(--depth, 0) * 2.4px) calc(var(--depth, 0) * 1px) 0 color-mix(in oklab, #3550A0 32%, transparent);
+}
+[data-band="2"] .field-label,[data-band="2"] .readout{color:color-mix(in oklab, var(--ink-2), #3550A0 calc(var(--depth, 0) * 120%))}
+
+/* Rev. 1 to 0, B7-B9 - spirit duplicator. Violet ink that bled, paper
+   gone yellow, a water stain, and one part of the form that has come
+   loose, chosen per room. */
+[data-band="3"] .sheet{
+  background:
+    radial-gradient(ellipse 34% 26% at var(--sx) var(--sy), color-mix(in oklab, #A07A2C 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 18% 14% at calc(100% - var(--sx)) calc(var(--sy) + 30%), color-mix(in oklab, #A07A2C 10%, transparent), transparent 70%),
+    color-mix(in oklab, var(--sheet), #D9B96A 20%);
+}
+[data-band="3"] .page-title,[data-band="3"] .lede,[data-band="3"] .blurb,[data-band="3"] .file dd{
+  font-family:"Courier New",Courier,ui-monospace,monospace;
+  color:color-mix(in oklab, var(--ink), #6B4FA0 58%);
+  text-shadow:0 0 .8px currentColor;
+}
+[data-band="3"] .page-title{letter-spacing:-.04em}
+[data-band="3"] .lede,[data-band="3"] .blurb{font-size:1.02rem}
+[data-band="3"][data-flaw="1"] .field:nth-child(2){rotate:-.5deg}
+[data-band="3"][data-flaw="2"] .field:nth-child(1) .field-head{rotate:-2.5deg;translate:8px 5px}
+[data-band="3"][data-flaw="3"] .field:last-of-type{rotate:.4deg;translate:-4px 0}
+
+/* Rev. -1 and below, B10-B12 - before there was an Office: ledger paper,
+   a clerk's serif, brown ink, a torn foot, and sections that have slipped
+   onto each other or faded out. */
+[data-band="4"] .sheet{
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 28px, color-mix(in oklab, #8DB97C 16%, transparent) 28px 56px),
+    color-mix(in oklab, var(--sheet), #CFE0C3 14%);
+  clip-path:${TORN};
+}
+/* On a dark sheet the same tint reads three times as strong. */
+@media (prefers-color-scheme: dark){
+  :root[data-band="4"]:not([data-theme="light"]) .sheet{
+    background:repeating-linear-gradient(to bottom, transparent 0 28px, color-mix(in oklab, #8DB97C 5%, transparent) 28px 56px), color-mix(in oklab, var(--sheet), #CFE0C3 4%);
+  }
+  :root[data-band="3"]:not([data-theme="light"]) .sheet{
+    background:radial-gradient(ellipse 34% 26% at var(--sx) var(--sy), color-mix(in oklab, #A07A2C 10%, transparent), transparent 70%), color-mix(in oklab, var(--sheet), #D9B96A 7%);
+  }
+}
+[data-band="4"] .page-title{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;letter-spacing:-.01em}
+[data-band="4"] .page-title,[data-band="4"] .lede,[data-band="4"] .blurb,[data-band="4"] .file dd{color:color-mix(in oklab, var(--ink), #7A5A34 55%)}
+[data-band="4"] .lede,[data-band="4"] .blurb{font-family:Georgia,"Times New Roman",serif;font-size:1.04rem}
+[data-band="4"][data-flaw="1"] .field:nth-child(2){opacity:.45}
+[data-band="4"][data-flaw="2"] .field:nth-child(2){margin-top:-22px;rotate:-.6deg}
+[data-band="4"][data-flaw="3"] .field:nth-child(1) .lede{filter:blur(.5px)}
 
 /* The weekend: same building, lights off. An inset shadow paints over
    the sheet's background and under its contents, so nothing else needs
@@ -1463,7 +1752,7 @@ const recordsPage = shell({
   extraCss: RECORDS_CSS,
   /* B1 is in the markup, so the page is whole before - or without - the
      script. The script only takes over when the hash names another room. */
-  body: '  <div id="room">' + renderRoom(recordsB1) + "</div>",
+  body: '  <div id="room">' + renderRoom(recordsB1, rTicket(RECORDS, null)) + "</div>",
   script: `<!-- The personnel file on B8 is your own localStorage, read in your own
      browser by personnelFile() below. Nothing about you has left it, and
      nothing down here writes to it. Look. -->
@@ -1474,10 +1763,149 @@ const recordsPage = shell({
 const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
-${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()).join("\n")}
+${[rHash, rRng, rPick, rLevel, roomAt, rStamp, rTicket, renderRoom].map(f => f.toString()).join("\n")}
+const MEADOW_SVG = ${JSON.stringify(MEADOW_SVG).replace(/</g, "\\u003c")};
+const PROCEDURE = ${JSON.stringify(PROCEDURE)};
 const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
 /* Dated in the Office's own hand, as on the form. */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const read = key => { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } };
+const pad = n => String(n).padStart(2, "0");
+/* Office hours as the form keeps them, by the visitor's own clock. */
+const outOfHours = d => d.getDay() === 0 || d.getDay() === 6 || d.getHours() < 9 || d.getHours() >= 17;
+
+/* Clocked in on the first room of this visit to the basement. Session
+   storage: a new visit is a new shift. */
+let clockIn = Date.now();
+try {
+  clockIn = Number(sessionStorage.getItem("sng.clockin")) || clockIn;
+  sessionStorage.setItem("sng.clockin", String(clockIn));
+} catch (e) { /* no shift is recorded */ }
+
+/* Every special reads this browser's own storage and nothing else. None of
+   them writes, apart from the ticket machine, which keeps the one number
+   it gave you under sng.ticket.v1. */
+const SPECIALS = {
+  ticket() { return rTicket(RECORDS, (read("sng.ticket.v1") || {}).n); },
+  department() {
+    const F = RECORDS.fixed.department;
+    const reg = read("sng.registry.v1");
+    if (!reg || !reg.token) return { label: "File", readout: "None", html: '<p class="blurb">' + esc(F.none) + "</p>" };
+    /* Eight characters of the token, as the form shows it. Never more. */
+    const file = (reg.token.slice(0, 4) + "-" + reg.token.slice(4, 8)).toUpperCase();
+    const names = Object.keys(reg.adopted || {}).sort((a, b) => reg.adopted[b] - reg.adopted[a]);
+    return { label: "File", readout: file, html: '<p class="blurb">' + esc(F.summary.replace("{file}", file).replace("{n}", String(names.length))) + "</p>"
+      + (names.length ? '<dl class="file">' + names.map(x => "<dd>" + esc(x) + "</dd>").join("") + "</dl>" : "") };
+  },
+  timecard() {
+    const T = RECORDS.fixed.timecard;
+    return { label: "Card", readout: "Stamped", html: '<p class="blurb" id="timecard">' + esc(T.card) + "</p>"
+      + (outOfHours(new Date()) ? '<p class="blurb">' + esc(T.overtime) + "</p>" : "") };
+  },
+  /* Printed from what this browser tells every site anyway. Nothing here
+     is stored but the name (if one is given), the number and the time of
+     issue; nothing is sent anywhere. */
+  badge() {
+    const B = RECORDS.fixed.badge;
+    const kept = read("sng.badge.v1");
+    if (!kept) {
+      return { label: "Badge", readout: "Not issued", html: '<div class="badge-form"><p class="blurb">' + esc(B.prompt) + "</p>"
+        + '<label class="vh" for="badge-name">Name</label><input class="badge-input" id="badge-name" maxlength="40" autocomplete="off" placeholder="Name (optional)">'
+        + '<button class="btn btn--ghost" type="button" id="issue-badge">' + esc(B.button) + "</button></div>" };
+    }
+    const L = B.labels;
+    const ua = navigator.userAgent;
+    const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Mac OS X/.test(ua) ? "macOS"
+      : /Windows/.test(ua) ? "Windows" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "";
+    const mobile = navigator.userAgentData ? navigator.userAgentData.mobile : /Mobi|iPhone/.test(ua);
+    const kind = mobile ? "phone" : /iPad|Tablet/.test(ua) ? "tablet" : "computer";
+    const uses = os ? (/^[AEIOU]/.test(os) ? "an " : "a ") + os + " " + kind : "a " + kind;
+    let place = B.undisclosed, reads = navigator.language || B.undisclosed;
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (tz.includes("/")) place = tz.split("/").pop().replace(/_/g, " ");
+      reads = new Intl.DisplayNames(["en"], { type: "language" }).of(navigator.language) || reads;
+    } catch (e) { /* the badge prints what it can */ }
+    const at = new Date(kept.at);
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const issued = pad(at.getHours()) + ":" + pad(at.getMinutes()) + ", " + DAYS[at.getDay()] + " " + pad(at.getDate()) + " " + MONTHS[at.getMonth()] + " " + at.getFullYear();
+    const display = (matchMedia("(prefers-color-scheme: dark)").matches ? "Dark mode" : "Light mode") + ", " + screen.width + " \u00d7 " + screen.height;
+    const row = (k, v, id) => "<dt>" + esc(k) + "</dt><dd" + (id ? ' id="' + id + '"' : "") + ">" + esc(v) + "</dd>";
+    return { label: "Badge", readout: "Issued", html: '<div class="badge"><div class="badge-head">' + esc(B.header) + "</div>"
+      + '<div class="badge-photo">' + esc(B.photo) + '</div><div class="badge-name">' + esc(kept.name || "Staff no. " + kept.no) + "</div>"
+      + '<dl class="badge-facts">' + row(L.issued, issued) + row(L.from, place) + row(L.reads, reads) + row(L.uses, uses)
+      + row(L.display, display) + row(L.battery, B.undisclosed, "badge-battery") + "</dl>"
+      + '<button class="linkbtn" type="button" id="lose-badge">' + esc(B.lost) + "</button></div>" };
+  },
+  /* The one room that keeps the time of day: the sky as it is outside. */
+  window() {
+    const h = new Date().getHours();
+    const sky = h >= 21 || h < 5 ? "night" : h < 8 ? "dawn" : h < 17 ? "day" : "dusk";
+    return { label: "View", readout: "Unobstructed", html: '<div class="window" data-sky="' + sky + '"></div>' };
+  },
+  committee() {
+    return { label: "Session", readout: "In progress", html: '<div class="stage"><p class="name is-idle" id="session-name" style="visibility:hidden">'
+      + esc(RECORDS.fixed.committee.result) + '</p><div class="committee" id="session-log"></div></div>' };
+  }
+};
+
+/* What a special does once it is on the page. Each returns a function that
+   stops it, called when the visitor leaves the room. */
+const RUNNING = {
+  /* Only where the browser offers it (Chromium); elsewhere the line stays
+     "Not disclosed", which is true. */
+  badge() {
+    const el = document.getElementById("badge-battery");
+    let live = true;
+    if (el && navigator.getBattery) {
+      navigator.getBattery().then(b => {
+        if (live) el.textContent = Math.round(b.level * 100) + "%, " + (b.charging ? "charging" : "discharging");
+      }).catch(() => {});
+    }
+    return () => { live = false; };
+  },
+  timecard() {
+    const T = RECORDS.fixed.timecard;
+    const el = document.getElementById("timecard");
+    const t = new Date(clockIn);
+    const tick = () => {
+      const s = Math.floor((Date.now() - clockIn) / 1000);
+      el.textContent = T.card.replace("{time}", pad(t.getHours()) + ":" + pad(t.getMinutes()))
+        .replace("{elapsed}", pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  },
+  /* The form's own committee session, line for line, and then the form's
+     own empty result. */
+  committee() {
+    const log = document.getElementById("session-log");
+    const name = document.getElementById("session-name");
+    const steps = PROCEDURE.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+    steps.push("Approved without discussion");
+    const gap = matchMedia("(prefers-reduced-motion: reduce)").matches ? 70 : 420;
+    let i = 0;
+    const id = setInterval(() => {
+      if (i < steps.length) {
+        const row = document.createElement("div");
+        row.className = "cline";
+        row.innerHTML = "<span>" + pad(i + 1) + "</span>" + steps[i] + (i < steps.length - 1 ? "&hellip;" : ".");
+        log.appendChild(row);
+        i++;
+      } else {
+        clearInterval(id);
+        log.hidden = true;
+        name.style.visibility = "";
+        const readout = log.closest(".field").querySelector(".readout");
+        if (readout.textContent.trim()) readout.textContent = "Adjourned";
+      }
+    }, gap);
+    return () => clearInterval(id);
+  }
+};
+
 function personnelFile() {
   const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const P = RECORDS.fixed.personnel;
@@ -1507,6 +1935,7 @@ function personnelFile() {
   const RETENTION_KEY = "sng.retention.v1";
   let deepest = 0;
   try { deepest = (JSON.parse(localStorage.getItem(RETENTION_KEY)) || {}).deepest || 0; } catch (e) { deepest = 0; }
+  let stop = null;
   function show(moved) {
     const m = location.hash.match(/^#\\/(.+)$/);
     const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
@@ -1517,19 +1946,72 @@ function personnelFile() {
       deepest = room.d;
       try { localStorage.setItem(RETENTION_KEY, JSON.stringify({ deepest, at: Date.now() })); } catch (e) { /* the basement forgets */ }
     }
-    host.innerHTML = renderRoom(room, room.id === "b8/personnel" ? personnelFile() : "");
+    if (stop) stop();
+    stop = null;
+    const extra = room.id === "b8/personnel" ? { label: "File", readout: "Provisional", html: personnelFile() }
+      : SPECIALS[room.special] ? SPECIALS[room.special]() : null;
+    host.innerHTML = renderRoom(room, extra);
+    if (room.special === "meadow") {
+      root.dataset.scene = "meadow";
+      host.querySelector(".meadow").innerHTML = MEADOW_SVG;
+    } else {
+      delete root.dataset.scene;
+    }
+    if (RUNNING[room.special]) stop = RUNNING[room.special]();
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
     root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
+    /* Special rooms are kept in better repair than the rest: a flaw that
+       faded the window, or tilted the committee, would break the room. */
+    root.dataset.flaw = room.special ? "0" : String(room.flaw || 0);
+    root.style.setProperty("--sx", (room.sx || 50) + "%");
+    root.style.setProperty("--sy", (room.sy || 40) + "%");
     document.title = (room.name ? room.name + " \\u2014 " : "") + "Records and Retention";
     if (moved) {
       window.scrollTo(0, 0);
       document.getElementById("room-title").focus({ preventScroll: true });
     }
   }
-  addEventListener("hashchange", () => show(true));
+  function arrive() {
+    host.classList.remove("arrive");
+    void host.offsetWidth;
+    host.classList.add("arrive");
+  }
+  addEventListener("hashchange", () => { show(true); arrive(); });
+  host.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" && ev.target.id === "badge-name") document.getElementById("issue-badge").click();
+  });
+  /* A door that leads back into the room it is in ("Continue along the
+     corridor") changes nothing in the address bar, so the browser fires no
+     hashchange and the click looked broken. Walk the visitor through it
+     anyway: the room is entered again, from the top. */
+  host.addEventListener("click", ev => {
+    if (ev.target.id === "issue-badge") {
+      const name = (document.getElementById("badge-name").value || "").trim().slice(0, 40);
+      const no = (100 + Math.floor(Math.random() * 900)) + "-" + (100 + Math.floor(Math.random() * 900));
+      try { localStorage.setItem("sng.badge.v1", JSON.stringify({ name, no, at: Date.now() })); } catch (e) { /* no badge */ }
+      show(false);
+      return;
+    }
+    if (ev.target.id === "lose-badge") {
+      try { localStorage.removeItem("sng.badge.v1"); } catch (e) { /* the badge stays */ }
+      show(false);
+      return;
+    }
+    if (ev.target.id === "take-number") {
+      try { localStorage.setItem("sng.ticket.v1", JSON.stringify({ n: 1000000 + Math.floor(Math.random() * 9000000), at: Date.now() })); } catch (e) { /* no number */ }
+      show(false);
+      return;
+    }
+    const a = ev.target.closest("a");
+    if (a && a.getAttribute("href") === location.hash) {
+      ev.preventDefault();
+      show(true);
+      arrive();
+    }
+  });
   /* B1 is already in the markup, as a weekday, for a first visit. */
-  if (location.hash || weekend || deepest >= 7) show(false);
+  if (location.hash || weekend || deepest >= 7 || read("sng.ticket.v1")) show(false);
 })();
 </script>
 `
