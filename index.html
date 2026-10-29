@@ -1311,13 +1311,15 @@ el.reset.addEventListener("click", () => {
 });
 
 
-/* The letterhead is the only part of the form that admits what time it is. */
+/* The letterhead is the only part of the form that admits what time it is.
+   Out of hours it is also a door: the building is only open when nobody
+   is in it. The span keeps the genre's ink inside the seal's link style. */
 const outside = officeShift();
 if (outside) {
   el.stamp.insertAdjacentHTML("beforeend",
-    '<br><span class="unstaffed">' +
+    '<br><a href="/records-and-retention"><span class="unstaffed">' +
     (outside === "weekend" ? "Closed until Monday" : "Currently unstaffed") +
-    "</span>");
+    "</span></a>");
 }
 
 /* Records and Retention keeps one thing: the deepest level this browser

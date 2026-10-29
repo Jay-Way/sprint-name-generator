@@ -1,6 +1,6 @@
 # Records and Retention — the basement
 
-Status: **phases 1–5 built** (generator, building inspection, source-comment
+Status: **all six phases built** (generator, building inspection, source-comment
 entrance; decay and weekend view). Texts for B1–B12 and the weekend signed off on
 29 Oct 2026. Open: B1–B12 (`RECORDS_OPEN = 12`) and the bottom, B13. Supersedes nothing in `IDEAS.md`;
 the escalation puzzle stays on ice and is kept clear of (see *Collisions*).
@@ -383,7 +383,10 @@ Each phase ships on its own and leaves the site coherent.
    Also fixed: false stairs could arrive at corridor 0, which the landing
    links to as well, giving the trick away. The building inspection now
    fails any room with two doors to the same place.
-6. **More entrances.** After-hours link, then Form SN-03's service stairs.
+6. **More entrances.** Done (29 Oct). Out of hours, the seal's *Currently
+   unstaffed* / *Closed until Monday* line links to the basement. Form SN-03
+   lists *Search carried out by: Records and Retention* among its signatures
+   and has *Service stairs* in its footer. Both new lines are drafts.
 
 ---
 
