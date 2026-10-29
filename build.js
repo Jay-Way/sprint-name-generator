@@ -1283,7 +1283,8 @@ function renderRoom(room, extra) {
   if (extra) html += '<section class="field section">' + head(k++, extra.label, extra.readout) + extra.html + "</section>";
   /* The Long Corridor is long: the notice is posted halfway along it. */
   const long = room.special === "long" ? '<div class="long" aria-hidden="true"></div>' : "";
-  html += long;
+  /* ...and halfway along it, a red line across the floor and both walls. */
+  html += long + (long ? '<div class="red-line" aria-hidden="true"></div>' : "");
   if (room.notice) {
     html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
@@ -1581,6 +1582,16 @@ const RECORDS_CSS = `
 
 /* The Long Corridor: the page is the length of it. */
 .long{height:140vh}
+/* Painted across the sheet and on past its edges to the walls of the
+   window. A spread shadow, clipped back to the line's own height, so the
+   page gains no horizontal scroll. */
+.red-line{
+  height:6px;
+  background:#B3261E;
+  box-shadow:0 0 0 100vmax #B3261E;
+  clip-path:inset(0 -100vmax);
+  opacity:.88;
+}
 .ticket{margin-top:6px}
 
 /* Arriving somewhere, including back where you were. */
