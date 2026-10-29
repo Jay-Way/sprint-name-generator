@@ -37,6 +37,9 @@ const lift = (re, label) => {
 };
 const styleBlock = lift(/<style>[\s\S]*?<\/style>/, "the <style> block");
 const LIMITS = eval(lift(/const LIMITS = \[[\s\S]*?\];/, "the LIMITS table") + " LIMITS;");
+/* The committee's procedure, for the Committee Room in the basement, which
+   must run the same session the form does. */
+const PROCEDURE = eval(lift(/const PROCEDURE = \[[\s\S]*?\];/, "the PROCEDURE list") + " PROCEDURE;");
 const faviconLink = lift(/<link rel="icon"[^>]*>/, "the favicon");
 
 /* The @font-face rules ride along inside styleBlock. What differs per page is
@@ -1162,14 +1165,17 @@ function roomAt(id, R, seed, open, weekend) {
       { label: "Lift", to: null, note: level.lift }
     ];
     return d === 1
-      ? room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits)
+      ? Object.assign(room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits), { special: "ticket" })
       : room("landing", "Landing", "Landing, B" + d, sub(rPick(r, band.landing)), level.status, exits);
   }
 
   if (!m[3] && !m[4]) {
     const f = R.fixed[m[2]];
     if (!f || f.d !== d) return unknown();
-    return room("fixed", "Office", f.name, f.text, f.notice, [corridorLink(lv.corridors[f.at])]);
+    /* A `through` room is a passage: in from one corridor, out to the next. */
+    const exits = [corridorLink(lv.corridors[f.at])];
+    if (f.through) exits.push(corridorLink(lv.corridors[(f.at + 1) % lv.corridors.length]));
+    return Object.assign(room("fixed", f.through ? "Passage" : "Office", f.name, f.text, f.notice, exits), { special: f.special || "" });
   }
 
   if (m[3]) {
@@ -1226,9 +1232,22 @@ function rStamp(room) {
   ];
 }
 
-/* `file` is markup for one extra field after the location - the personnel
-   file on B8, which only the browser can fill in. */
-function renderRoom(room, file) {
+/* The ticket field at reception. Pure, like the rest, so that B1 can be
+   rendered at build time with the machine still unused. */
+function rTicket(R, n) {
+  return {
+    label: "Ticket",
+    readout: n ? "Issued" : "Dispenser",
+    html: n
+      ? '<p class="blurb">' + R.ticket.taken.replace("{n}", String(n).replace(/\B(?=(\d{3})+$)/g, "\u2009")) + "</p>"
+      : '<p class="blurb">' + R.ticket.none + '</p><button class="btn btn--ghost ticket" type="button" id="take-number">' + R.ticket.button + "</button>"
+  };
+}
+
+/* `extra` is one more field after the location - { label, readout, html }
+   - for the rooms only the browser can fill in: the personnel file, the
+   ticket machine, the timecard, the committee in session. */
+function renderRoom(room, extra) {
   /* The masthead and the ruled paper, and nothing else. The heading is
      for screen readers, which should be told where they are, and nothing
      more than sighted visitors are. */
@@ -1248,11 +1267,15 @@ function renderRoom(room, file) {
     + (room.log ? '<div class="ghost-log" aria-hidden="true"><div class="cline"><span>01</span>Convening committee&hellip;</div></div>' : "")
     + "</section>";
   let k = 1;
-  if (file) html += '<section class="field section">' + head(k++, "File", "Provisional") + file + "</section>";
+  if (extra) html += '<section class="field section">' + head(k++, extra.label, extra.readout) + extra.html + "</section>";
+  /* The Long Corridor is long: the notice is posted halfway along it. */
+  const long = room.special === "long" ? '<div class="long" aria-hidden="true"></div>' : "";
+  html += long;
   if (room.notice) {
     html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
   }
+  html += long;
   html += '<section class="field">' + head(k, "Exits", room.exits.length + " marked")
     + '<nav class="toc exits" aria-label="Exits">' + room.exits.map(x => x.to
       ? '<a href="' + (x.to === "/" ? "/" : "#/" + x.to) + '">' + e(x.label) + "</a>"
@@ -1308,6 +1331,15 @@ function renderRoom(room, file) {
     text(f.name, "fixed." + k + ".name");
     text(f.text, "fixed." + k + ".text");
   }
+
+  /* Specials are filled in by the page script, which knows these. */
+  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [] };
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (!f.special) continue;
+    if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
+    for (const t of SPECIAL_ROOMS[f.special]) text(f[t], "fixed." + k + "." + t);
+  }
+  for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
 
   /* The page script reads these two by name. */
   if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
@@ -1381,6 +1413,10 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+/* The Long Corridor: the page is the length of it. */
+.long{height:140vh}
+.ticket{margin-top:6px}
+
 /* Arriving somewhere, including back where you were. */
 #room.arrive{animation:arrive .32s ease both}
 @keyframes arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -1467,7 +1503,7 @@ const recordsPage = shell({
   extraCss: RECORDS_CSS,
   /* B1 is in the markup, so the page is whole before - or without - the
      script. The script only takes over when the hash names another room. */
-  body: '  <div id="room">' + renderRoom(recordsB1) + "</div>",
+  body: '  <div id="room">' + renderRoom(recordsB1, rTicket(RECORDS, null)) + "</div>",
   script: `<!-- The personnel file on B8 is your own localStorage, read in your own
      browser by personnelFile() below. Nothing about you has left it, and
      nothing down here writes to it. Look. -->
@@ -1478,10 +1514,95 @@ const recordsPage = shell({
 const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
-${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()).join("\n")}
+${[rHash, rRng, rPick, rLevel, roomAt, rStamp, rTicket, renderRoom].map(f => f.toString()).join("\n")}
+const PROCEDURE = ${JSON.stringify(PROCEDURE)};
 const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
 /* Dated in the Office's own hand, as on the form. */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const read = key => { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } };
+const pad = n => String(n).padStart(2, "0");
+/* Office hours as the form keeps them, by the visitor's own clock. */
+const outOfHours = d => d.getDay() === 0 || d.getDay() === 6 || d.getHours() < 9 || d.getHours() >= 17;
+
+/* Clocked in on the first room of this visit to the basement. Session
+   storage: a new visit is a new shift. */
+let clockIn = Date.now();
+try {
+  clockIn = Number(sessionStorage.getItem("sng.clockin")) || clockIn;
+  sessionStorage.setItem("sng.clockin", String(clockIn));
+} catch (e) { /* no shift is recorded */ }
+
+/* Every special reads this browser's own storage and nothing else. None of
+   them writes, apart from the ticket machine, which keeps the one number
+   it gave you under sng.ticket.v1. */
+const SPECIALS = {
+  ticket() { return rTicket(RECORDS, (read("sng.ticket.v1") || {}).n); },
+  department() {
+    const F = RECORDS.fixed.department;
+    const reg = read("sng.registry.v1");
+    if (!reg || !reg.token) return { label: "File", readout: "None", html: '<p class="blurb">' + esc(F.none) + "</p>" };
+    /* Eight characters of the token, as the form shows it. Never more. */
+    const file = (reg.token.slice(0, 4) + "-" + reg.token.slice(4, 8)).toUpperCase();
+    const names = Object.keys(reg.adopted || {}).sort((a, b) => reg.adopted[b] - reg.adopted[a]);
+    return { label: "File", readout: file, html: '<p class="blurb">' + esc(F.summary.replace("{file}", file).replace("{n}", String(names.length))) + "</p>"
+      + (names.length ? '<dl class="file">' + names.map(x => "<dd>" + esc(x) + "</dd>").join("") + "</dl>" : "") };
+  },
+  timecard() {
+    const T = RECORDS.fixed.timecard;
+    return { label: "Card", readout: "Stamped", html: '<p class="blurb" id="timecard">' + esc(T.card) + "</p>"
+      + (outOfHours(new Date()) ? '<p class="blurb">' + esc(T.overtime) + "</p>" : "") };
+  },
+  committee() {
+    return { label: "Session", readout: "In progress", html: '<div class="stage"><p class="name is-idle" id="session-name" style="visibility:hidden">'
+      + esc(RECORDS.fixed.committee.result) + '</p><div class="committee" id="session-log"></div></div>' };
+  }
+};
+
+/* What a special does once it is on the page. Each returns a function that
+   stops it, called when the visitor leaves the room. */
+const RUNNING = {
+  timecard() {
+    const T = RECORDS.fixed.timecard;
+    const el = document.getElementById("timecard");
+    const t = new Date(clockIn);
+    const tick = () => {
+      const s = Math.floor((Date.now() - clockIn) / 1000);
+      el.textContent = T.card.replace("{time}", pad(t.getHours()) + ":" + pad(t.getMinutes()))
+        .replace("{elapsed}", pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  },
+  /* The form's own committee session, line for line, and then the form's
+     own empty result. */
+  committee() {
+    const log = document.getElementById("session-log");
+    const name = document.getElementById("session-name");
+    const steps = PROCEDURE.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+    steps.push("Approved without discussion");
+    const gap = matchMedia("(prefers-reduced-motion: reduce)").matches ? 70 : 420;
+    let i = 0;
+    const id = setInterval(() => {
+      if (i < steps.length) {
+        const row = document.createElement("div");
+        row.className = "cline";
+        row.innerHTML = "<span>" + pad(i + 1) + "</span>" + steps[i] + (i < steps.length - 1 ? "&hellip;" : ".");
+        log.appendChild(row);
+        i++;
+      } else {
+        clearInterval(id);
+        log.hidden = true;
+        name.style.visibility = "";
+        const readout = log.closest(".field").querySelector(".readout");
+        if (readout.textContent.trim()) readout.textContent = "Adjourned";
+      }
+    }, gap);
+    return () => clearInterval(id);
+  }
+};
+
 function personnelFile() {
   const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const P = RECORDS.fixed.personnel;
@@ -1511,6 +1632,7 @@ function personnelFile() {
   const RETENTION_KEY = "sng.retention.v1";
   let deepest = 0;
   try { deepest = (JSON.parse(localStorage.getItem(RETENTION_KEY)) || {}).deepest || 0; } catch (e) { deepest = 0; }
+  let stop = null;
   function show(moved) {
     const m = location.hash.match(/^#\\/(.+)$/);
     const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
@@ -1521,7 +1643,12 @@ function personnelFile() {
       deepest = room.d;
       try { localStorage.setItem(RETENTION_KEY, JSON.stringify({ deepest, at: Date.now() })); } catch (e) { /* the basement forgets */ }
     }
-    host.innerHTML = renderRoom(room, room.id === "b8/personnel" ? personnelFile() : "");
+    if (stop) stop();
+    stop = null;
+    const extra = room.id === "b8/personnel" ? { label: "File", readout: "Provisional", html: personnelFile() }
+      : SPECIALS[room.special] ? SPECIALS[room.special]() : null;
+    host.innerHTML = renderRoom(room, extra);
+    if (RUNNING[room.special]) stop = RUNNING[room.special]();
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
     root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
@@ -1542,6 +1669,11 @@ function personnelFile() {
      hashchange and the click looked broken. Walk the visitor through it
      anyway: the room is entered again, from the top. */
   host.addEventListener("click", ev => {
+    if (ev.target.id === "take-number") {
+      try { localStorage.setItem("sng.ticket.v1", JSON.stringify({ n: 1000000 + Math.floor(Math.random() * 9000000), at: Date.now() })); } catch (e) { /* no number */ }
+      show(false);
+      return;
+    }
     const a = ev.target.closest("a");
     if (a && a.getAttribute("href") === location.hash) {
       ev.preventDefault();
@@ -1550,7 +1682,7 @@ function personnelFile() {
     }
   });
   /* B1 is already in the markup, as a weekday, for a first visit. */
-  if (location.hash || weekend || deepest >= 7) show(false);
+  if (location.hash || weekend || deepest >= 7 || read("sng.ticket.v1")) show(false);
 })();
 </script>
 `

@@ -390,6 +390,20 @@ Each phase ships on its own and leaves the site coherent.
 
 ---
 
+## Specials (29 Oct 2026)
+
+Rooms that do something, judged against what made the personnel file work:
+it is about the visitor, it is true, it is unexpected, it explains nothing.
+Built, texts in draft:
+
+| Room | Where | What it does |
+|---|---|---|
+| Ticket machine | B1 reception | *Take a number* issues a seven-digit number, kept in `sng.ticket.v1` and shredded with the minutes. *Now serving: 0.* Reserved as the set-up for B13 |
+| Departmental Records | `#/b3/department` | Reads this browser's copy of the team register (never the network): file number and the team's adoptions. Only the first eight characters of the token are ever shown |
+| Time and Attendance | `#/b5/timecard` | Clocked in at the first room of this visit (session storage); time on premises ticks live. Out of hours: recorded as overtime |
+| Committee Room | `#/b6/committee` | The form's own committee session, with `PROCEDURE` lifted from `index.html` by `build.js`, ending in the form's empty result: *No designation issued* |
+| The Long Corridor | `#/b7/long` | A passage from one corridor to the next, three and a half screens long, with its notice posted halfway |
+
 ## Open questions
 
 - **Share-ability.** Room links are stable, so people will pass around "go to

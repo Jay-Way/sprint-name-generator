@@ -412,6 +412,15 @@ const RECORDS = {
     text: "Records and Retention is open. It has been open since it was closed, which is the usual arrangement in this building."
   },
 
+  /* The ticket machine at reception, B1. The number is kept in this
+     browser (sng.ticket.v1) and shredded with the minutes.
+     DRAFT, awaiting sign-off. */
+  ticket: {
+    button: "Take a number",
+    none: "A ticket machine, bolted to the counter. It dispenses one number per visitor.",
+    taken: "Your number is {n}. Please wait to be called."
+  },
+
   /* For a visitor who has been deep and comes back up to B1. Replaces
      the reception notice; read from this browser's own storage. */
   welcomeBack: "Welcome back.",
@@ -466,6 +475,38 @@ const RECORDS = {
       empty: "The file has been prepared. It is empty. It is not expecting to stay that way.",
       /* DRAFT, awaiting sign-off. Heads the list of names. */
       summary: "File opened {date}. Designations on record: {n}."
+    },
+    /* DRAFT, awaiting sign-off: department, timecard, committee, long. */
+    department: {
+      d: 3, at: 2, special: "department",
+      name: "Departmental Records",
+      text: "A shelf of box files, one per department, each labelled with a file number.",
+      notice: "Departments are responsible for their own adoptions.",
+      summary: "Department {file}. Designations adopted: {n}.",
+      none: "No department is on file for this visitor. One may be assigned in due course."
+    },
+    timecard: {
+      d: 5, at: 1, special: "timecard",
+      name: "Time and Attendance",
+      text: "A clocking-in machine on the wall, and a rack of cards beside it. One card has been stamped.",
+      notice: "Overtime is not paid.",
+      card: "Clocked in {time}. Time on premises: {elapsed}.",
+      overtime: "Out of hours. Recorded as overtime."
+    },
+    committee: {
+      d: 6, at: 3, special: "committee",
+      name: "Committee Room",
+      text: "A long table, fully attended by chairs. The committee is in session.",
+      notice: "Sessions are held whether or not the committee is present.",
+      result: "No designation issued"
+    },
+    /* Goes from one corridor to the next, the long way: the page itself is
+       the length of it. */
+    long: {
+      d: 7, at: 1, special: "long", through: true,
+      name: "The Long Corridor",
+      text: "A corridor. It goes on.",
+      notice: "Halfway point. Please do not stop at the halfway point."
     },
     answers: {
       d: 11, at: 1,

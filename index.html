@@ -1304,6 +1304,7 @@ el.reset.addEventListener("click", () => {
     localStorage.removeItem(SEEN_KEY);
     localStorage.removeItem(RECORD_KEY);
     localStorage.removeItem(RETENTION_KEY);
+    localStorage.removeItem("sng.ticket.v1");
   } catch (e) {}
   presses = 0;
   showRetained();
