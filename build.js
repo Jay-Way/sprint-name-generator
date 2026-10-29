@@ -1122,8 +1122,12 @@ function roomAt(id, R, seed, open, weekend) {
   const no = d <= 3 ? 5 + (d - 1) * 3 : 5 + (d - 1) * 3 + Math.floor(r() * (d - 3) * 9);
   /* From B7 a corridor may hold one line of committee log with no
      committee - the procedure from the front desk, running unattended. */
+  /* The last draws from r(), so that adding them moved nothing that was
+     drawn before: `flaw` picks which part of an old form has come loose,
+     sx/sy where the water got in. */
   const room = (kind, place, name, text, notice, exits) =>
-    ({ id, d, no, kind, place, name, text, notice, exits, log: kind === "corridor" && d >= 7 && r() < 0.35 });
+    ({ id, d, no, kind, place, name, text, notice, exits, log: kind === "corridor" && d >= 7 && r() < 0.35,
+      flaw: Math.floor(r() * 4), sx: 15 + Math.floor(r() * 70), sy: 10 + Math.floor(r() * 60) });
   const unknown = () => ({
     id, d: 0, no: 0, kind: "unknown", place: "Unplanned",
     name: R.unknown.name, text: R.unknown.text, notice: R.unknown.notice,
@@ -1398,6 +1402,15 @@ function renderRoom(room, extra) {
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
 
+/* The torn foot of a form older than the Office: a fixed ragged edge, the
+   same on every page, because it is the same sheet. */
+const TORN = (() => {
+  const r = rRng(rHash("torn"));
+  const pts = ["0 0", "100% 0"];
+  for (let x = 100; x >= 0; x -= 2.5) pts.push(x + "% calc(100% - " + (r() * 9).toFixed(1) + "px)");
+  return "polygon(" + pts.join(", ") + ")";
+})();
+
 const RECORDS_CSS = `
 /* ---------- Records and Retention only ---------- */
 .exits{margin-top:4px}
@@ -1477,7 +1490,79 @@ body{background-position:0 calc(var(--depth, 0) * 11px)}
 /* B10-B12: no rules between fields; what is left of the form is labels. */
 [data-band="4"] .field + .field{border-top-color:transparent}
 [data-band="4"] .field:nth-child(odd) .field-head{translate:5px 0}
-[data-band="4"] .lede{color:var(--ink-3)}
+
+/* ---------- Eras ----------
+   Revisions count backwards on the way down, so the paperwork gets older:
+   the same form, in the editions that came before it. Each era is the
+   form as it was printed then, and printed badly. No new fonts: the
+   period type is whatever the visitor's system has for Courier and
+   Georgia, which is what period type looks like now anyway.
+
+   Rev. 3, B4-B6 - continuous stationery and a tired ribbon. Barely there
+   at B4 and settling in by B6: everything here scales with --depth. */
+[data-band="2"] .sheet{position:relative}
+[data-band="2"] .sheet::before,[data-band="2"] .sheet::after{
+  content:"";
+  position:absolute;
+  top:0;bottom:0;
+  width:14px;
+  background:radial-gradient(circle at 7px 12px, var(--paper) 3.2px, transparent 3.8px) 0 0/14px 24px repeat-y;
+  opacity:calc((var(--depth, 0) - .2) * 4);
+  pointer-events:none;
+}
+[data-band="2"] .sheet::before{left:3px}
+[data-band="2"] .sheet::after{right:3px}
+[data-band="2"] .lede,[data-band="2"] .blurb{
+  font-family:"Courier New",Courier,ui-monospace,monospace;
+  font-size:1.02rem;
+  text-shadow:calc(var(--depth, 0) * 2.4px) calc(var(--depth, 0) * 1px) 0 color-mix(in oklab, #3550A0 32%, transparent);
+}
+[data-band="2"] .field-label,[data-band="2"] .readout{color:color-mix(in oklab, var(--ink-2), #3550A0 calc(var(--depth, 0) * 120%))}
+
+/* Rev. 1 to 0, B7-B9 - spirit duplicator. Violet ink that bled, paper
+   gone yellow, a water stain, and one part of the form that has come
+   loose, chosen per room. */
+[data-band="3"] .sheet{
+  background:
+    radial-gradient(ellipse 34% 26% at var(--sx) var(--sy), color-mix(in oklab, #A07A2C 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 18% 14% at calc(100% - var(--sx)) calc(var(--sy) + 30%), color-mix(in oklab, #A07A2C 10%, transparent), transparent 70%),
+    color-mix(in oklab, var(--sheet), #D9B96A 20%);
+}
+[data-band="3"] .page-title,[data-band="3"] .lede,[data-band="3"] .blurb,[data-band="3"] .file dd{
+  font-family:"Courier New",Courier,ui-monospace,monospace;
+  color:color-mix(in oklab, var(--ink), #6B4FA0 58%);
+  text-shadow:0 0 .8px currentColor;
+}
+[data-band="3"] .page-title{letter-spacing:-.04em}
+[data-band="3"] .lede,[data-band="3"] .blurb{font-size:1.02rem}
+[data-band="3"][data-flaw="1"] .field:nth-child(2){rotate:-.5deg}
+[data-band="3"][data-flaw="2"] .field:nth-child(1) .field-head{rotate:-2.5deg;translate:8px 5px}
+[data-band="3"][data-flaw="3"] .field:last-of-type{rotate:.4deg;translate:-4px 0}
+
+/* Rev. -1 and below, B10-B12 - before there was an Office: ledger paper,
+   a clerk's serif, brown ink, a torn foot, and sections that have slipped
+   onto each other or faded out. */
+[data-band="4"] .sheet{
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 28px, color-mix(in oklab, #8DB97C 16%, transparent) 28px 56px),
+    color-mix(in oklab, var(--sheet), #CFE0C3 14%);
+  clip-path:${TORN};
+}
+/* On a dark sheet the same tint reads three times as strong. */
+@media (prefers-color-scheme: dark){
+  :root[data-band="4"]:not([data-theme="light"]) .sheet{
+    background:repeating-linear-gradient(to bottom, transparent 0 28px, color-mix(in oklab, #8DB97C 5%, transparent) 28px 56px), color-mix(in oklab, var(--sheet), #CFE0C3 4%);
+  }
+  :root[data-band="3"]:not([data-theme="light"]) .sheet{
+    background:radial-gradient(ellipse 34% 26% at var(--sx) var(--sy), color-mix(in oklab, #A07A2C 10%, transparent), transparent 70%), color-mix(in oklab, var(--sheet), #D9B96A 7%);
+  }
+}
+[data-band="4"] .page-title{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:700;letter-spacing:-.01em}
+[data-band="4"] .page-title,[data-band="4"] .lede,[data-band="4"] .blurb,[data-band="4"] .file dd{color:color-mix(in oklab, var(--ink), #7A5A34 55%)}
+[data-band="4"] .lede,[data-band="4"] .blurb{font-family:Georgia,"Times New Roman",serif;font-size:1.04rem}
+[data-band="4"][data-flaw="1"] .field:nth-child(2){opacity:.45}
+[data-band="4"][data-flaw="2"] .field:nth-child(2){margin-top:-22px;rotate:-.6deg}
+[data-band="4"][data-flaw="3"] .field:nth-child(1) .lede{filter:blur(.5px)}
 
 /* The weekend: same building, lights off. An inset shadow paints over
    the sheet's background and under its contents, so nothing else needs
@@ -1652,6 +1737,9 @@ function personnelFile() {
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
     root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
+    root.dataset.flaw = String(room.flaw || 0);
+    root.style.setProperty("--sx", (room.sx || 50) + "%");
+    root.style.setProperty("--sy", (room.sy || 40) + "%");
     document.title = (room.name ? room.name + " \\u2014 " : "") + "Records and Retention";
     if (moved) {
       window.scrollTo(0, 0);

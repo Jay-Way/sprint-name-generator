@@ -390,6 +390,24 @@ Each phase ships on its own and leaves the site coherent.
 
 ---
 
+## Eras (29 Oct 2026)
+
+Decided after phase 2, and replacing "subtle" below B6: the descent goes
+through older and older editions of the same form, as Portal 2 goes down
+through Aperture's decades. Revisions already count backwards, so the
+paperwork follows them. CSS only, system Courier and Georgia, no images.
+
+| Levels | Edition | Look |
+|---|---|---|
+| B1–B3 | Rev. 4 | Today's form |
+| B4–B6 | Rev. 3 | Continuous stationery: perforated margins, typewriter copy, blue misregistration; scales with depth, barely there at B4 |
+| B7–B9 | Rev. 1–0 | Spirit duplicator: violet bled ink, yellowed paper, a water stain, one part of the form come loose |
+| B10–B12 | Rev. −1 to −4 | Before the Office: ledger stripes, clerk's serif, brown ink, a torn foot, sections slipped or faded |
+
+Which part has come loose and where the water got in are drawn from the
+room's seed, last, so a room is broken the same way on every visit and
+nothing drawn before them moved.
+
 ## Specials (29 Oct 2026)
 
 Rooms that do something, judged against what made the personnel file work:
