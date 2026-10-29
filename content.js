@@ -463,7 +463,9 @@ const RECORDS = {
       name: "Personnel — Visitor (Provisional)",
       text: "A filing cabinet with one drawer, labelled with today’s date. It holds a single file. The file is yours.",
       notice: "The Office does not keep your minutes. Somebody down here does.",
-      empty: "The file has been prepared. It is empty. It is not expecting to stay that way."
+      empty: "The file has been prepared. It is empty. It is not expecting to stay that way.",
+      /* DRAFT, awaiting sign-off. Heads the list of names. */
+      summary: "File opened {date}. Designations on record: {n}."
     },
     answers: {
       d: 11, at: 1,

@@ -369,8 +369,10 @@ Each phase ships on its own and leaves the site coherent.
    for every open level, every band list non-empty, fixed rooms on a real
    level and corridor, no markup, no straight apostrophes. The building
    inspection also proves every fixed room on an open level is reachable.
-4. **The personnel file.** The listing from `localStorage`, the honest
-   source comment, the empty variant.
+4. **The personnel file.** Done (29 Oct). `personnelFile()` in the page
+   script reads `sng.seen.v1` and `sng.record.v1`, read-only; the page
+   source carries the comment saying so. Rendered as an extra *File* field
+   on `#/b8/personnel`; the summary line is a draft.
 5. **The bottom and the mark.** B13, `sng.retention.v1`, *Welcome back.*,
    the seal line, shredding takes it.
 6. **More entrances.** After-hours link, then Form SN-03's service stairs.

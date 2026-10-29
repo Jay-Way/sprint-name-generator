@@ -1217,7 +1217,9 @@ function rStamp(room) {
   ];
 }
 
-function renderRoom(room) {
+/* `file` is markup for one extra field after the location - the personnel
+   file on B8, which only the browser can fill in. */
+function renderRoom(room, file) {
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   /* The form comes apart in the markup as well as the styles: from B7 the
      readouts are left blank, from B10 the fields lose their numbers. */
@@ -1230,11 +1232,13 @@ function renderRoom(room) {
     + '<p class="lede">' + e(room.text) + "</p>"
     + (room.log ? '<div class="ghost-log" aria-hidden="true"><div class="cline"><span>01</span>Convening committee&hellip;</div></div>' : "")
     + "</section>";
+  let k = 1;
+  if (file) html += '<section class="field section">' + head(k++, "File", "Provisional") + file + "</section>";
   if (room.notice) {
-    html += '<section class="field section">' + head(1, "Notice", "Posted")
+    html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
   }
-  html += '<section class="field">' + head(room.notice ? 2 : 1, "Exits", room.exits.length + " marked")
+  html += '<section class="field">' + head(k, "Exits", room.exits.length + " marked")
     + '<nav class="toc exits" aria-label="Exits">' + room.exits.map(x => x.to
       ? '<a href="' + (x.to === "/" ? "/" : "#/" + x.to) + '">' + e(x.label) + "</a>"
       : '<span class="exit-shut">' + e(x.label) + " &#8212; " + e(x.note) + "</span>").join("") + "</nav></section>";
@@ -1289,6 +1293,11 @@ function renderRoom(room) {
     text(f.name, "fixed." + k + ".name");
     text(f.text, "fixed." + k + ".text");
   }
+
+  /* The page script reads these two by name. */
+  if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
+  text(RECORDS.fixed.personnel.empty, "fixed.personnel.empty");
+  text(RECORDS.fixed.personnel.summary, "fixed.personnel.summary");
 
   const walk = (v, where) => {
     if (typeof v === "string") {
@@ -1355,6 +1364,19 @@ const RECORDS_CSS = `
 }
 #room-title:focus{outline:none}
 
+/* The personnel file: genre as a filing tab, names under it. */
+.file{margin:4px 0 0}
+.file dt{
+  margin:14px 0 4px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.file dt:first-child{margin-top:0}
+.file dd{margin:0;font-size:.94rem;line-height:1.6;color:var(--ink-2)}
+
 /* Decay. The script sets --depth (0 at B1, 1 at B13) and data-band on
    <html>; everything below keys off those two and nothing else. It is
    meant to be noticed late: by B6 the visitor should suspect it has been
@@ -1417,7 +1439,10 @@ const recordsPage = shell({
   /* B1 is in the markup, so the page is whole before - or without - the
      script. The script only takes over when the hash names another room. */
   body: '  <div id="room">' + renderRoom(recordsB1) + "</div>",
-  script: `<script>
+  script: `<!-- The personnel file on B8 is your own localStorage, read in your own
+     browser by personnelFile() below. Nothing about you has left it, and
+     nothing down here writes to it. Look. -->
+<script>
 /* Records and Retention. Every room is generated from its address by the
    functions below, which are the same functions build.js ran to check the
    building has a way down. Nothing is fetched and nothing is stored. */
@@ -1425,6 +1450,24 @@ const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
 ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()).join("\n")}
+const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
+/* Dated in the Office's own hand, as on the form. */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function personnelFile() {
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const P = RECORDS.fixed.personnel;
+  let seen = {}, record = {};
+  try { seen = JSON.parse(localStorage.getItem("sng.seen.v1")) || {}; } catch (e) { seen = {}; }
+  try { record = JSON.parse(localStorage.getItem("sng.record.v1")) || {}; } catch (e) { record = {}; }
+  const genres = Object.keys(seen).filter(k => Array.isArray(seen[k]) && seen[k].length);
+  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>";
+  const n = genres.reduce((t, k) => t + seen[k].length, 0);
+  const d = record.first ? new Date(record.first) : null;
+  const opened = d ? String(d.getDate()).padStart(2, "0") + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() : "a date not recorded";
+  return '<p class="blurb">' + esc(P.summary.replace("{date}", opened).replace("{n}", String(n))) + "</p>"
+    + '<dl class="file">' + genres.map(k => "<dt>" + esc(GENRE_LABELS[k] || k) + "</dt>"
+      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>";
+}
 (function () {
   const host = document.getElementById("room");
   const seal = document.querySelector(".stamp-no");
@@ -1435,7 +1478,7 @@ ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()
   function show(moved) {
     const m = location.hash.match(/^#\\/(.+)$/);
     const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
-    host.innerHTML = renderRoom(room);
+    host.innerHTML = renderRoom(room, room.id === "b8/personnel" ? personnelFile() : "");
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
     root.dataset.band = String(room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
