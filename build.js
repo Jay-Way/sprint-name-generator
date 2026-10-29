@@ -1381,6 +1381,10 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+/* Arriving somewhere, including back where you were. */
+#room.arrive{animation:arrive .32s ease both}
+@keyframes arrive{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#room.arrive{animation:none}}
 
 /* B13. The sheet goes, so the ruled paper behind it is all there is, and
    there is more of it than anything would need. */
@@ -1527,7 +1531,24 @@ function personnelFile() {
       document.getElementById("room-title").focus({ preventScroll: true });
     }
   }
-  addEventListener("hashchange", () => show(true));
+  function arrive() {
+    host.classList.remove("arrive");
+    void host.offsetWidth;
+    host.classList.add("arrive");
+  }
+  addEventListener("hashchange", () => { show(true); arrive(); });
+  /* A door that leads back into the room it is in ("Continue along the
+     corridor") changes nothing in the address bar, so the browser fires no
+     hashchange and the click looked broken. Walk the visitor through it
+     anyway: the room is entered again, from the top. */
+  host.addEventListener("click", ev => {
+    const a = ev.target.closest("a");
+    if (a && a.getAttribute("href") === location.hash) {
+      ev.preventDefault();
+      show(true);
+      arrive();
+    }
+  });
   /* B1 is already in the markup, as a weekday, for a first visit. */
   if (location.hash || weekend || deepest >= 7) show(false);
 })();
