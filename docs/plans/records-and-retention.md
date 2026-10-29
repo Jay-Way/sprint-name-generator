@@ -422,6 +422,16 @@ Built, texts in draft:
 | Committee Room | `#/b6/committee` | The form's own committee session, with `PROCEDURE` lifted from `index.html` by `build.js`, ending in the form's empty result: *No designation issued* |
 | The Long Corridor | `#/b7/long` | A passage from one corridor to the next, three and a half screens long, with its notice posted halfway |
 
+Two rooms with something impossible about them, recorded flatly:
+
+| Room | Where | What it does |
+|---|---|---|
+| Office with a Window | `#/b10/window` | A window on B10 showing the sky as it is outside now, by the visitor's clock: night, dawn, day or dusk. The one room that changes with the time of day, by decision |
+| Storage (External) | `#/b12/meadow` | The door opens on a meadow. No form, no masthead: an overexposed field, an office chair, a door frame standing in the grass, one line, and the way back. Drawn as inline SVG (`MEADOW_SVG` in `build.js`); a painted image may replace it |
+
+Special rooms are exempt from the per-room flaws, which would otherwise fade
+or tilt the very thing the room is for.
+
 ## Open questions
 
 - **Share-ability.** Room links are stable, so people will pass around "go to

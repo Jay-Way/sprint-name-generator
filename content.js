@@ -508,6 +508,24 @@ const RECORDS = {
       text: "A corridor. It goes on.",
       notice: "Halfway point. Please do not stop at the halfway point."
     },
+    /* DRAFT, awaiting sign-off: window, meadow.
+       The window is the one room that changes with the time of day - by
+       decision, 29 Oct: it shows the sky as it is outside, now, by the
+       visitor's own clock, on a level with no outside. */
+    window: {
+      d: 10, at: 2, special: "window",
+      name: "Office with a Window",
+      text: "An office with a window. The window looks out on the sky. This is level B10.",
+      notice: "The window has been approved."
+    },
+    /* The form is not here. Only the line below and the way back. */
+    meadow: {
+      d: 12, at: 3, special: "meadow",
+      name: "Storage (External)",
+      text: "This room is classified as storage.",
+      notice: "",
+      exit: "Return through the door"
+    },
     answers: {
       d: 11, at: 1,
       name: "Department of Answers",

@@ -1178,6 +1178,7 @@ function roomAt(id, R, seed, open, weekend) {
     if (!f || f.d !== d) return unknown();
     /* A `through` room is a passage: in from one corridor, out to the next. */
     const exits = [corridorLink(lv.corridors[f.at])];
+    if (f.exit) exits[0].label = f.exit;
     if (f.through) exits.push(corridorLink(lv.corridors[(f.at + 1) % lv.corridors.length]));
     return Object.assign(room("fixed", f.through ? "Passage" : "Office", f.name, f.text, f.notice, exits), { special: f.special || "" });
   }
@@ -1258,6 +1259,13 @@ function renderRoom(room, extra) {
   if (room.kind === "bottom") {
     return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
   }
+  /* Through the door marked Storage (External): no form at all. The scene
+     itself is MEADOW_SVG, put in place by the page script. */
+  if (room.special === "meadow") {
+    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow" aria-hidden="true"></div>'
+      + '<div class="meadow-caption"><p>' + room.text + '</p><nav class="exits meadow-exit" aria-label="Exits">'
+      + room.exits.map(x => '<a href="#/' + x.to + '">' + x.label + "</a>").join("") + "</nav></div>";
+  }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   /* The form comes apart in the markup as well as the styles: from B7 the
      readouts are left blank, from B10 the fields lose their numbers. */
@@ -1337,7 +1345,7 @@ function renderRoom(room, extra) {
   }
 
   /* Specials are filled in by the page script, which knows these. */
-  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [] };
+  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [], window: [], meadow: ["exit"] };
   for (const [k, f] of Object.entries(RECORDS.fixed)) {
     if (!f.special) continue;
     if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
@@ -1402,6 +1410,28 @@ function renderRoom(room, extra) {
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
 
+/* The meadow. Drawn rather than photographed so it ships in the page;
+   if a painted one replaces it, it replaces this string and nothing else.
+   Overexposed on purpose - a memory of a field, not a field. */
+const MEADOW_SVG = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="presentation">
+<defs>
+<linearGradient id="m-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9EC7EE"/><stop offset=".55" stop-color="#E2EBF8"/><stop offset=".7" stop-color="#FBF1E6"/></linearGradient>
+<radialGradient id="m-sun"><stop offset="0" stop-color="#FFFDF4"/><stop offset=".35" stop-color="#FFFDF4" stop-opacity=".7"/><stop offset="1" stop-color="#FFFDF4" stop-opacity="0"/></radialGradient>
+<linearGradient id="m-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CDE9A4"/><stop offset="1" stop-color="#86C463"/></linearGradient>
+<linearGradient id="m-haze" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".7" stop-color="#FFFFFF" stop-opacity=".6"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+<filter id="m-soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#m-sky)"/>
+<circle cx="1020" cy="290" r="320" fill="url(#m-sun)"/>
+<g class="m-clouds" filter="url(#m-soft)" fill="#FFFFFF" opacity=".85"><ellipse cx="300" cy="200" rx="190" ry="40"/><ellipse cx="430" cy="178" rx="120" ry="34"/><ellipse cx="960" cy="140" rx="220" ry="38"/><ellipse cx="1420" cy="232" rx="160" ry="30"/></g>
+<path d="M0 622 C 300 592 520 602 800 612 S 1300 596 1600 606 L1600 900 L0 900Z" fill="#D9ECC4"/>
+<path d="M0 662 C 400 642 900 652 1600 642 L1600 900 L0 900Z" fill="url(#m-grass)"/>
+<rect width="1600" height="900" fill="url(#m-haze)"/>
+<g transform="translate(915 566)"><rect width="30" height="66" fill="#3A3F48"/><rect x="-3" y="-3" width="36" height="72" fill="none" stroke="#F5F1E8" stroke-width="4"/></g>
+<ellipse cx="690" cy="676" rx="74" ry="9" fill="#6FA650" opacity=".45"/>
+<g transform="translate(690 642)" fill="#5E6672"><rect x="-30" y="-94" width="60" height="58" rx="8"/><rect x="-36" y="-30" width="72" height="12" rx="4"/><rect x="-3" y="-18" width="6" height="34"/><rect x="-42" y="15" width="84" height="6" rx="3"/><circle cx="-40" cy="26" r="5"/><circle cx="40" cy="26" r="5"/><circle cx="0" cy="26" r="5"/></g>
+</svg>`;
+
 /* The torn foot of a form older than the Office: a fixed ragged edge, the
    same on every page, because it is the same sheet. */
 const TORN = (() => {
@@ -1426,6 +1456,52 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+/* The window on B10: the sky as it is outside, by the visitor's clock. */
+.window{
+  position:relative;
+  max-width:440px;
+  aspect-ratio:4/3;
+  margin-top:6px;
+  border:12px solid color-mix(in oklab, var(--sheet), var(--ink) 18%);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.18);
+}
+.window::before,.window::after{content:"";position:absolute;background:color-mix(in oklab, var(--sheet), var(--ink) 18%)}
+.window::before{left:calc(50% - 4px);top:0;bottom:0;width:8px}
+.window::after{top:calc(45% - 4px);left:0;right:0;height:8px}
+.window[data-sky="day"]{background:radial-gradient(ellipse 30% 12% at 30% 30%, rgba(255,255,255,.9), transparent), radial-gradient(ellipse 24% 9% at 72% 22%, rgba(255,255,255,.75), transparent), linear-gradient(#5E9BD6, #CFE6F7)}
+.window[data-sky="dawn"]{background:linear-gradient(#2E3A66, #B9849E 55%, #F6D29B)}
+.window[data-sky="dusk"]{background:linear-gradient(#2B2A57, #C2618A 55%, #F2A65A)}
+.window[data-sky="night"]{background:radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 62% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 52%, #fff, transparent), radial-gradient(1px 1px at 38% 66%, #fff, transparent), radial-gradient(1px 1px at 12% 74%, #fff, transparent), linear-gradient(#070B1E, #1C2347)}
+
+/* Storage (External). The form is not here: no sheet, no masthead, no
+   footer, only the field and the way back. Stays bright in dark mode -
+   it is not part of the building's lighting. */
+:root[data-scene="meadow"] body{background:#CFE3F5;padding:0;animation:none}
+:root[data-scene="meadow"] .sheet{background:transparent;border:0;box-shadow:none !important;clip-path:none;max-width:none}
+:root[data-scene="meadow"] .masthead,:root[data-scene="meadow"] .fineprint{display:none}
+.meadow{position:fixed;inset:0;z-index:0}
+.meadow svg{display:block;width:100%;height:100%;filter:saturate(1.12) brightness(1.04)}
+.m-clouds{animation:drift 90s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(-70px)}}
+.meadow-caption{
+  position:fixed;left:0;right:0;bottom:8vh;z-index:1;
+  text-align:center;
+  font-size:1rem;
+  color:#46525E;
+}
+.meadow-caption p{margin:0 0 14px}
+.meadow-exit{display:flex;justify-content:center}
+.meadow-exit a{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#46525E;
+  text-decoration:underline;
+  text-underline-offset:4px;
+}
+@media (prefers-reduced-motion:reduce){.m-clouds{animation:none}}
+
 /* The Long Corridor: the page is the length of it. */
 .long{height:140vh}
 .ticket{margin-top:6px}
@@ -1600,6 +1676,7 @@ const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
 ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, rTicket, renderRoom].map(f => f.toString()).join("\n")}
+const MEADOW_SVG = ${JSON.stringify(MEADOW_SVG).replace(/</g, "\\u003c")};
 const PROCEDURE = ${JSON.stringify(PROCEDURE)};
 const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
 /* Dated in the Office's own hand, as on the form. */
@@ -1637,6 +1714,12 @@ const SPECIALS = {
     const T = RECORDS.fixed.timecard;
     return { label: "Card", readout: "Stamped", html: '<p class="blurb" id="timecard">' + esc(T.card) + "</p>"
       + (outOfHours(new Date()) ? '<p class="blurb">' + esc(T.overtime) + "</p>" : "") };
+  },
+  /* The one room that keeps the time of day: the sky as it is outside. */
+  window() {
+    const h = new Date().getHours();
+    const sky = h >= 21 || h < 5 ? "night" : h < 8 ? "dawn" : h < 17 ? "day" : "dusk";
+    return { label: "View", readout: "Unobstructed", html: '<div class="window" data-sky="' + sky + '"></div>' };
   },
   committee() {
     return { label: "Session", readout: "In progress", html: '<div class="stage"><p class="name is-idle" id="session-name" style="visibility:hidden">'
@@ -1733,11 +1816,19 @@ function personnelFile() {
     const extra = room.id === "b8/personnel" ? { label: "File", readout: "Provisional", html: personnelFile() }
       : SPECIALS[room.special] ? SPECIALS[room.special]() : null;
     host.innerHTML = renderRoom(room, extra);
+    if (room.special === "meadow") {
+      root.dataset.scene = "meadow";
+      host.querySelector(".meadow").innerHTML = MEADOW_SVG;
+    } else {
+      delete root.dataset.scene;
+    }
     if (RUNNING[room.special]) stop = RUNNING[room.special]();
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
     root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
-    root.dataset.flaw = String(room.flaw || 0);
+    /* Special rooms are kept in better repair than the rest: a flaw that
+       faded the window, or tilted the committee, would break the room. */
+    root.dataset.flaw = room.special ? "0" : String(room.flaw || 0);
     root.style.setProperty("--sx", (room.sx || 50) + "%");
     root.style.setProperty("--sy", (room.sy || 40) + "%");
     document.title = (room.name ? room.name + " \\u2014 " : "") + "Records and Retention";
