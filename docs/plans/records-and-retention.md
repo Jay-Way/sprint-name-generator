@@ -1,8 +1,8 @@
 # Records and Retention — the basement
 
-Status: **phases 1 and 2 built** (generator, building inspection, source-comment
+Status: **phases 1–3 built** (generator, building inspection, source-comment
 entrance; decay and weekend view). Texts for B1–B12 and the weekend signed off on
-29 Oct 2026. Live: B1–B4 (`RECORDS_OPEN = 4`). Supersedes nothing in `IDEAS.md`;
+29 Oct 2026. Open: B1–B12 (`RECORDS_OPEN = 12`); B13 shows *Access Closed* until phase 5. Supersedes nothing in `IDEAS.md`;
 the escalation puzzle stays on ice and is kept clear of (see *Collisions*).
 
 ## Decisions (27 Oct 2026)
@@ -364,9 +364,11 @@ Each phase ships on its own and leaves the site coherent.
    from B10. Weekend: dimmed sheet, a reception line, weekend notices in
    place of the mundane ones; the building inspection fails if the weekend
    would change a single door. Reduced motion stops the creep.
-3. **Content.** Drafted for B1–B12 (29 Oct). Remaining: sign-off, the
-   weekend notices, build-time shape validation of `RECORDS`, and raising
-   `RECORDS_OPEN` as levels are signed off.
+3. **Content.** Done (29 Oct). All of `RECORDS` signed off; B1–B12 open.
+   `build.js` audits `RECORDS` before generating anything: every thread line
+   for every open level, every band list non-empty, fixed rooms on a real
+   level and corridor, no markup, no straight apostrophes. The building
+   inspection also proves every fixed room on an open level is reachable.
 4. **The personnel file.** The listing from `localStorage`, the honest
    source comment, the empty variant.
 5. **The bottom and the mark.** B13, `sng.retention.v1`, *Welcome back.*,

@@ -1049,9 +1049,9 @@ Sitemap: ${ORIGIN}/sitemap.xml
 
 const RECORDS_URL = "/records-and-retention";
 const RECORDS_SEED = "records-and-retention/1";
-/* Levels written so far. The landing one below this is "closed pending
-   review" until its band of fragments exists. The plan goes to 13. */
-const RECORDS_OPEN = 4;
+/* Levels open so far. The landing one below this is "closed pending
+   review" until it exists; B13, the bottom, is phase 5 of the plan. */
+const RECORDS_OPEN = 12;
 
 /* FNV-1a and mulberry32: small, fast, and identical in Node and every
    browser, which is the only property that matters here. */
@@ -1241,6 +1241,66 @@ function renderRoom(room) {
   return html;
 }
 
+/* The records audit. The generator trusts RECORDS completely - a missing
+   band or an empty list would not fail, it would render a room with
+   "undefined" in it, deep enough that nobody testing would ever see it.
+   So the shape is checked here, along with two house rules the corpus
+   already keeps: plain text only (it is set with textContent, so markup
+   would print literally), and typographic apostrophes, never '. */
+{
+  const fail = msg => { throw new Error("build: RECORDS - " + msg); };
+  const text = (v, where) => { if (typeof v !== "string" || !v.trim()) fail(where + " must be non-empty text"); };
+  const list = (v, where) => { if (!Array.isArray(v) || !v.length) fail(where + " must be a non-empty list"); };
+
+  for (const k of ["title", "desc", "welcomeBack", "loopName", "loopExit", "spurName", "spurText", "spurNotice"]) text(RECORDS[k], k);
+  text(RECORDS.reception.name, "reception.name");
+  text(RECORDS.reception.text, "reception.text");
+  for (const k of ["closed", "unknown"]) { text(RECORDS[k].name, k + ".name"); text(RECORDS[k].text, k + ".text"); }
+
+  /* One line of each thread per open level: a level without one would
+     break the thread at exactly the point it is meant to be read. */
+  list(RECORDS.levels, "levels");
+  if (RECORDS.levels.length < RECORDS_OPEN) fail("levels has " + RECORDS.levels.length + " entries; B1-B" + RECORDS_OPEN + " are open");
+  RECORDS.levels.forEach((l, i) => { text(l.lift, "levels[" + i + "].lift"); text(l.status, "levels[" + i + "].status"); });
+
+  list(RECORDS.bands, "bands");
+  let floor = 0;
+  RECORDS.bands.forEach((b, i) => {
+    const at = "bands[" + i + "]";
+    if (!(b.upTo > floor)) fail(at + ".upTo must be above the band before it");
+    floor = b.upTo;
+    for (const k of ["landing", "corridor", "corridorNotice"]) { list(b[k], at + "." + k); b[k].forEach((s, j) => text(s, at + "." + k + "[" + j + "]")); }
+    list(b.rooms, at + ".rooms");
+    b.rooms.forEach((r, j) => { text(r.name, at + ".rooms[" + j + "].name"); text(r.text, at + ".rooms[" + j + "].text"); });
+  });
+  if (floor < RECORDS_OPEN) fail("no band covers B" + (floor + 1) + "-B" + RECORDS_OPEN);
+
+  list(RECORDS.mundane.rooms, "mundane.rooms");
+  list(RECORDS.mundane.notices, "mundane.notices");
+  text(RECORDS.weekend.reception, "weekend.reception");
+  list(RECORDS.weekend.notices, "weekend.notices");
+
+  /* rLevel() draws at least four corridors, so `at` must name one of the
+     first four or the room would open off a corridor that may not exist. */
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (!/^[a-z][a-z-]*$/.test(k) || k === "landing") fail("fixed room key '" + k + "' is not a usable address");
+    if (!Number.isInteger(f.d) || f.d < 1 || f.d > RECORDS.levels.length) fail("fixed." + k + ".d is not a level");
+    if (!Number.isInteger(f.at) || f.at < 0 || f.at > 3) fail("fixed." + k + ".at must be 0-3");
+    text(f.name, "fixed." + k + ".name");
+    text(f.text, "fixed." + k + ".text");
+  }
+
+  const walk = (v, where) => {
+    if (typeof v === "string") {
+      if (v.includes("<")) fail(where + " contains markup; RECORDS is plain text");
+      if (v.includes("'")) fail(where + " uses ' - the house rule is ’");
+    } else if (v && typeof v === "object") {
+      for (const [k, x] of Object.entries(v)) walk(x, where + "." + k);
+    }
+  };
+  walk(RECORDS, "RECORDS");
+}
+
 /* The building inspection. Walks every room reachable from B1 and fails
    the build unless the bottom is reachable, every room has a way out,
    and no room is a trap - from anywhere, some sequence of exits leads
@@ -1271,6 +1331,10 @@ function renderRoom(room) {
   }
   for (const id of rooms.keys()) {
     if (!reaches.has(id)) throw new Error("build: basement room " + id + " is a trap - no route leads down from it.");
+  }
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (f.d <= RECORDS_OPEN && !rooms.has("b" + f.d + "/" + k)) throw new Error(
+      "build: fixed room " + k + " on B" + f.d + " cannot be reached. Check its `at`.");
   }
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
