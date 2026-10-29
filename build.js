@@ -1049,9 +1049,9 @@ Sitemap: ${ORIGIN}/sitemap.xml
 
 const RECORDS_URL = "/records-and-retention";
 const RECORDS_SEED = "records-and-retention/1";
-/* Levels written so far. The landing one below this is "closed pending
-   review" until its band of fragments exists. The plan goes to 13. */
-const RECORDS_OPEN = 4;
+/* Levels open so far. The landing one below this is "closed pending
+   review" until it exists; B13, the bottom, is phase 5 of the plan. */
+const RECORDS_OPEN = 12;
 
 /* FNV-1a and mulberry32: small, fast, and identical in Node and every
    browser, which is the only property that matters here. */
@@ -1130,6 +1130,9 @@ function roomAt(id, R, seed, open, weekend) {
 
   if (d === open + 1) {
     if (m[2] !== "landing") return unknown();
+    /* The bottom: the level after the last line of the threads, once every
+       level above it is open. Records without referents - so nothing. */
+    if (d === R.levels.length + 1 && open === R.levels.length) return room("bottom", "", "", "", "", []);
     return room("closed", "Landing", R.closed.name, sub(R.closed.text), sub(R.closed.notice),
       [{ label: "Stairs up", to: "b" + (d - 1) + "/landing" }]);
   }
@@ -1144,11 +1147,16 @@ function roomAt(id, R, seed, open, weekend) {
   const fixedHere = Object.keys(R.fixed).filter(k => R.fixed[k].d === d);
 
   if (m[2] === "landing") {
+    /* False stairs arrive two corridors along from the service stairs -
+       never at corridor 0, which the landing also links to: two doors to
+       the same place would give the trick away. */
+    let fake = (lv.stairsAt + 2) % lv.corridors.length;
+    if (fake === 0) fake = 1;
     /* The landing carries the threads: every level is entered here, so
        every visitor reads them, one line per level, in order. */
     const level = R.levels[Math.min(d, R.levels.length) - 1];
     const exits = [
-      { label: "Stairs down", to: lv.fakeDown ? cid(lv.corridors[(lv.stairsAt + 2) % lv.corridors.length]) : "b" + (d + 1) + "/landing" },
+      { label: "Stairs down", to: lv.fakeDown ? cid(lv.corridors[fake]) : "b" + (d + 1) + "/landing" },
       { label: "Stairs up", to: d === 1 ? "/" : "b" + (d - 1) + "/landing" },
       corridorLink(lv.corridors[0]),
       { label: "Lift", to: null, note: level.lift }
@@ -1209,6 +1217,7 @@ function roomAt(id, R, seed, open, weekend) {
    which IDEAS.md has reserved. U+2212 for the minus: the hyphen reads as
    a dash at this size. */
 function rStamp(room) {
+  if (room.kind === "bottom") return [];
   const rev = room.d <= 3 ? 4 : 7 - room.d;
   return [
     "Records and Retention",
@@ -1217,7 +1226,15 @@ function rStamp(room) {
   ];
 }
 
-function renderRoom(room) {
+/* `file` is markup for one extra field after the location - the personnel
+   file on B8, which only the browser can fill in. */
+function renderRoom(room, file) {
+  /* The masthead and the ruled paper, and nothing else. The heading is
+     for screen readers, which should be told where they are, and nothing
+     more than sighted visitors are. */
+  if (room.kind === "bottom") {
+    return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
+  }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   /* The form comes apart in the markup as well as the styles: from B7 the
      readouts are left blank, from B10 the fields lose their numbers. */
@@ -1230,15 +1247,82 @@ function renderRoom(room) {
     + '<p class="lede">' + e(room.text) + "</p>"
     + (room.log ? '<div class="ghost-log" aria-hidden="true"><div class="cline"><span>01</span>Convening committee&hellip;</div></div>' : "")
     + "</section>";
+  let k = 1;
+  if (file) html += '<section class="field section">' + head(k++, "File", "Provisional") + file + "</section>";
   if (room.notice) {
-    html += '<section class="field section">' + head(1, "Notice", "Posted")
+    html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
   }
-  html += '<section class="field">' + head(room.notice ? 2 : 1, "Exits", room.exits.length + " marked")
+  html += '<section class="field">' + head(k, "Exits", room.exits.length + " marked")
     + '<nav class="toc exits" aria-label="Exits">' + room.exits.map(x => x.to
       ? '<a href="' + (x.to === "/" ? "/" : "#/" + x.to) + '">' + e(x.label) + "</a>"
       : '<span class="exit-shut">' + e(x.label) + " &#8212; " + e(x.note) + "</span>").join("") + "</nav></section>";
   return html;
+}
+
+/* The records audit. The generator trusts RECORDS completely - a missing
+   band or an empty list would not fail, it would render a room with
+   "undefined" in it, deep enough that nobody testing would ever see it.
+   So the shape is checked here, along with two house rules the corpus
+   already keeps: plain text only (it is set with textContent, so markup
+   would print literally), and typographic apostrophes, never '. */
+{
+  const fail = msg => { throw new Error("build: RECORDS - " + msg); };
+  const text = (v, where) => { if (typeof v !== "string" || !v.trim()) fail(where + " must be non-empty text"); };
+  const list = (v, where) => { if (!Array.isArray(v) || !v.length) fail(where + " must be a non-empty list"); };
+
+  for (const k of ["title", "desc", "welcomeBack", "loopName", "loopExit", "spurName", "spurText", "spurNotice"]) text(RECORDS[k], k);
+  text(RECORDS.reception.name, "reception.name");
+  text(RECORDS.reception.text, "reception.text");
+  for (const k of ["closed", "unknown"]) { text(RECORDS[k].name, k + ".name"); text(RECORDS[k].text, k + ".text"); }
+
+  /* One line of each thread per open level: a level without one would
+     break the thread at exactly the point it is meant to be read. */
+  list(RECORDS.levels, "levels");
+  if (RECORDS.levels.length < RECORDS_OPEN) fail("levels has " + RECORDS.levels.length + " entries; B1-B" + RECORDS_OPEN + " are open");
+  RECORDS.levels.forEach((l, i) => { text(l.lift, "levels[" + i + "].lift"); text(l.status, "levels[" + i + "].status"); });
+
+  list(RECORDS.bands, "bands");
+  let floor = 0;
+  RECORDS.bands.forEach((b, i) => {
+    const at = "bands[" + i + "]";
+    if (!(b.upTo > floor)) fail(at + ".upTo must be above the band before it");
+    floor = b.upTo;
+    for (const k of ["landing", "corridor", "corridorNotice"]) { list(b[k], at + "." + k); b[k].forEach((s, j) => text(s, at + "." + k + "[" + j + "]")); }
+    list(b.rooms, at + ".rooms");
+    b.rooms.forEach((r, j) => { text(r.name, at + ".rooms[" + j + "].name"); text(r.text, at + ".rooms[" + j + "].text"); });
+  });
+  if (floor < RECORDS_OPEN) fail("no band covers B" + (floor + 1) + "-B" + RECORDS_OPEN);
+
+  list(RECORDS.mundane.rooms, "mundane.rooms");
+  list(RECORDS.mundane.notices, "mundane.notices");
+  text(RECORDS.weekend.reception, "weekend.reception");
+  list(RECORDS.weekend.notices, "weekend.notices");
+
+  /* rLevel() draws at least four corridors, so `at` must name one of the
+     first four or the room would open off a corridor that may not exist. */
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (!/^[a-z][a-z-]*$/.test(k) || k === "landing") fail("fixed room key '" + k + "' is not a usable address");
+    if (!Number.isInteger(f.d) || f.d < 1 || f.d > RECORDS.levels.length) fail("fixed." + k + ".d is not a level");
+    if (!Number.isInteger(f.at) || f.at < 0 || f.at > 3) fail("fixed." + k + ".at must be 0-3");
+    text(f.name, "fixed." + k + ".name");
+    text(f.text, "fixed." + k + ".text");
+  }
+
+  /* The page script reads these two by name. */
+  if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
+  text(RECORDS.fixed.personnel.empty, "fixed.personnel.empty");
+  text(RECORDS.fixed.personnel.summary, "fixed.personnel.summary");
+
+  const walk = (v, where) => {
+    if (typeof v === "string") {
+      if (v.includes("<")) fail(where + " contains markup; RECORDS is plain text");
+      if (v.includes("'")) fail(where + " uses ' - the house rule is ’");
+    } else if (v && typeof v === "object") {
+      for (const [k, x] of Object.entries(v)) walk(x, where + "." + k);
+    }
+  };
+  walk(RECORDS, "RECORDS");
 }
 
 /* The building inspection. Walks every room reachable from B1 and fails
@@ -1258,6 +1342,9 @@ function renderRoom(room) {
     if (room.kind === "unknown") throw new Error("build: the basement links to " + id + ", which is not on the plan.");
     if (doors(roomAt(id, RECORDS, RECORDS_SEED, RECORDS_OPEN, true)) !== doors(room)) throw new Error(
       "build: basement room " + id + " has different exits at the weekend. Words may change; doors may not.");
+    const targets = room.exits.filter(x => x.to && x.to !== id).map(x => x.to);
+    if (new Set(targets).size !== targets.length) throw new Error(
+      "build: basement room " + id + " has two doors to the same place, which gives away whichever one is lying.");
     rooms.set(id, room);
     for (const x of room.exits) if (x.to && x.to !== "/") queue.push(x.to);
   }
@@ -1271,6 +1358,10 @@ function renderRoom(room) {
   }
   for (const id of rooms.keys()) {
     if (!reaches.has(id)) throw new Error("build: basement room " + id + " is a trap - no route leads down from it.");
+  }
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    if (f.d <= RECORDS_OPEN && !rooms.has("b" + f.d + "/" + k)) throw new Error(
+      "build: fixed room " + k + " on B" + f.d + " cannot be reached. Check its `at`.");
   }
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
@@ -1290,6 +1381,26 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+
+/* B13. The sheet goes, so the ruled paper behind it is all there is, and
+   there is more of it than anything would need. */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.bottom{min-height:300vh}
+:root[data-band="5"] .sheet{background:transparent;border-color:transparent;box-shadow:none !important}
+:root[data-band="5"] .fineprint{display:none}
+
+/* The personnel file: genre as a filing tab, names under it. */
+.file{margin:4px 0 0}
+.file dt{
+  margin:14px 0 4px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.66rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.file dt:first-child{margin-top:0}
+.file dd{margin:0;font-size:.94rem;line-height:1.6;color:var(--ink-2)}
 
 /* Decay. The script sets --depth (0 at B1, 1 at B13) and data-band on
    <html>; everything below keys off those two and nothing else. It is
@@ -1353,7 +1464,10 @@ const recordsPage = shell({
   /* B1 is in the markup, so the page is whole before - or without - the
      script. The script only takes over when the hash names another room. */
   body: '  <div id="room">' + renderRoom(recordsB1) + "</div>",
-  script: `<script>
+  script: `<!-- The personnel file on B8 is your own localStorage, read in your own
+     browser by personnelFile() below. Nothing about you has left it, and
+     nothing down here writes to it. Look. -->
+<script>
 /* Records and Retention. Every room is generated from its address by the
    functions below, which are the same functions build.js ran to check the
    building has a way down. Nothing is fetched and nothing is stored. */
@@ -1361,6 +1475,24 @@ const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
 ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()).join("\n")}
+const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
+/* Dated in the Office's own hand, as on the form. */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function personnelFile() {
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const P = RECORDS.fixed.personnel;
+  let seen = {}, record = {};
+  try { seen = JSON.parse(localStorage.getItem("sng.seen.v1")) || {}; } catch (e) { seen = {}; }
+  try { record = JSON.parse(localStorage.getItem("sng.record.v1")) || {}; } catch (e) { record = {}; }
+  const genres = Object.keys(seen).filter(k => Array.isArray(seen[k]) && seen[k].length);
+  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>";
+  const n = genres.reduce((t, k) => t + seen[k].length, 0);
+  const d = record.first ? new Date(record.first) : null;
+  const opened = d ? String(d.getDate()).padStart(2, "0") + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() : "a date not recorded";
+  return '<p class="blurb">' + esc(P.summary.replace("{date}", opened).replace("{n}", String(n))) + "</p>"
+    + '<dl class="file">' + genres.map(k => "<dt>" + esc(GENRE_LABELS[k] || k) + "</dt>"
+      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>";
+}
 (function () {
   const host = document.getElementById("room");
   const seal = document.querySelector(".stamp-no");
@@ -1368,22 +1500,36 @@ ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()
   /* The visitor's own calendar, as with officeShift() on the form. */
   const weekend = [0, 6].includes(new Date().getDay());
   if (weekend) root.dataset.weekend = "";
+  /* The only thing the basement keeps: the deepest level this browser has
+     reached, and when. In this browser's storage, like everything else
+     the site knows; the form reads it for its seal, and shredding the
+     minutes removes it. */
+  const RETENTION_KEY = "sng.retention.v1";
+  let deepest = 0;
+  try { deepest = (JSON.parse(localStorage.getItem(RETENTION_KEY)) || {}).deepest || 0; } catch (e) { deepest = 0; }
   function show(moved) {
     const m = location.hash.match(/^#\\/(.+)$/);
     const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
-    host.innerHTML = renderRoom(room);
+    /* Somebody who has been far enough down to be treated as staff is
+       not asked to sign in again. */
+    if (room.id === "b1/landing" && deepest >= 7) room.notice = RECORDS.welcomeBack;
+    if (room.d > deepest) {
+      deepest = room.d;
+      try { localStorage.setItem(RETENTION_KEY, JSON.stringify({ deepest, at: Date.now() })); } catch (e) { /* the basement forgets */ }
+    }
+    host.innerHTML = renderRoom(room, room.id === "b8/personnel" ? personnelFile() : "");
     seal.innerHTML = rStamp(room).join("<br>");
     root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
-    root.dataset.band = String(room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
-    document.title = room.name + " \\u2014 Records and Retention";
+    root.dataset.band = String(room.kind === "bottom" ? 5 : room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
+    document.title = (room.name ? room.name + " \\u2014 " : "") + "Records and Retention";
     if (moved) {
       window.scrollTo(0, 0);
       document.getElementById("room-title").focus({ preventScroll: true });
     }
   }
   addEventListener("hashchange", () => show(true));
-  /* B1 is already in the markup, as a weekday. */
-  if (location.hash || weekend) show(false);
+  /* B1 is already in the markup, as a weekday, for a first visit. */
+  if (location.hash || weekend || deepest >= 7) show(false);
 })();
 </script>
 `

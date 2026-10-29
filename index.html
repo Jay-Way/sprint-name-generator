@@ -1300,20 +1300,42 @@ el.copy.addEventListener("click", async () => {
 });
 
 el.reset.addEventListener("click", () => {
-  try { localStorage.removeItem(SEEN_KEY); localStorage.removeItem(RECORD_KEY); } catch (e) {}
+  try {
+    localStorage.removeItem(SEEN_KEY);
+    localStorage.removeItem(RECORD_KEY);
+    localStorage.removeItem(RETENTION_KEY);
+  } catch (e) {}
   presses = 0;
+  showRetained();
   refresh();
 });
 
 
-/* The letterhead is the only part of the form that admits what time it is. */
+/* The letterhead is the only part of the form that admits what time it is.
+   Out of hours it is also a door: the building is only open when nobody
+   is in it. The span keeps the genre's ink inside the seal's link style. */
 const outside = officeShift();
 if (outside) {
   el.stamp.insertAdjacentHTML("beforeend",
-    '<br><span class="unstaffed">' +
+    '<br><a href="/records-and-retention"><span class="unstaffed">' +
     (outside === "weekend" ? "Closed until Monday" : "Currently unstaffed") +
-    "</span>");
+    "</span></a>");
 }
+
+/* Records and Retention keeps one thing: the deepest level this browser
+   has reached, in its own storage. Somebody who has been all the way down
+   has it noted on the seal, and nowhere else. 13 is the bottom; see
+   RECORDS.levels in content.js, which has one entry per level above it. */
+const RETENTION_KEY = "sng.retention.v1";
+function showRetained(){
+  el.stamp.querySelectorAll(".retained").forEach(n => n.remove());
+  let r = null;
+  try { r = JSON.parse(localStorage.getItem(RETENTION_KEY)); } catch (e) {}
+  if (r && r.deepest >= 13) {
+    el.stamp.insertAdjacentHTML("beforeend", '<br class="retained"><span class="retained">Retained &#183; B13</span>');
+  }
+}
+showRetained();
 
 buildChips();
 loadLimit();
