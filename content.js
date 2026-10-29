@@ -476,6 +476,24 @@ const RECORDS = {
       /* DRAFT, awaiting sign-off. Heads the list of names. */
       summary: "File opened {date}. Designations on record: {n}."
     },
+    /* DRAFT, awaiting sign-off. The badge is printed from what the browser
+       already tells every site it visits: time zone, language, system,
+       display, battery where offered. Read when the badge is shown and
+       never kept; only the name, if given, the number and the time of
+       issue are stored, under sng.badge.v1, and shredded with the minutes. */
+    badge: {
+      d: 1, at: 0, special: "badge",
+      name: "Security Desk",
+      text: "A desk with a badge printer on it. The printer is warm.",
+      notice: "Badges must be worn at all times. Badges are not checked.",
+      prompt: "Visitors may give a name for their badge. Visitors who do not are issued a staff number.",
+      button: "Issue badge",
+      lost: "Report badge lost",
+      photo: "No photograph on file",
+      header: "Visitor",
+      undisclosed: "Not disclosed",
+      labels: { issued: "Issued", from: "From", reads: "Reads", uses: "Uses", display: "Display", battery: "Battery" }
+    },
     /* DRAFT, awaiting sign-off: department, timecard, committee, long. */
     department: {
       d: 3, at: 2, special: "department",

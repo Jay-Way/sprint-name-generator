@@ -422,6 +422,8 @@ Built, texts in draft:
 | Committee Room | `#/b6/committee` | The form's own committee session, with `PROCEDURE` lifted from `index.html` by `build.js`, ending in the form's empty result: *No designation issued* |
 | The Long Corridor | `#/b7/long` | A passage from one corridor to the next, three and a half screens long, with its notice posted halfway |
 
+| Security Desk | `#/b1/badge` | A visitor badge printed from what the browser tells every site anyway: time zone (as a city), language, system, display, battery where offered. The visitor may give a name; otherwise a staff number. Only name, number and time of issue are kept (`sng.badge.v1`, shredded with the minutes). No IP address: that would need a server, would make SN-02 and the footer untrue, and is the threatening gesture the basement is built to avoid |
+
 Two rooms with something impossible about them, recorded flatly:
 
 | Room | Where | What it does |

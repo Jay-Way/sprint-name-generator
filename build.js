@@ -1345,13 +1345,15 @@ function renderRoom(room, extra) {
   }
 
   /* Specials are filled in by the page script, which knows these. */
-  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [], window: [], meadow: ["exit"] };
+  const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [], window: [], meadow: ["exit"],
+    badge: ["prompt", "button", "lost", "photo", "header", "undisclosed"] };
   for (const [k, f] of Object.entries(RECORDS.fixed)) {
     if (!f.special) continue;
     if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
     for (const t of SPECIAL_ROOMS[f.special]) text(f[t], "fixed." + k + "." + t);
   }
   for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
+  for (const t of ["issued", "from", "reads", "uses", "display", "battery"]) text((RECORDS.fixed.badge.labels || {})[t], "fixed.badge.labels." + t);
 
   /* The page script reads these two by name. */
   if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
@@ -1456,6 +1458,56 @@ const RECORDS_CSS = `
   text-transform:uppercase;
 }
 #room-title:focus{outline:none}
+/* The visitor badge, B1. */
+.badge-form{display:grid;gap:10px;max-width:360px;margin-top:6px}
+.badge-input{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.85rem;
+  padding:10px 12px;
+  background:var(--paper);
+  color:var(--ink);
+  border:1px solid var(--rule);
+  border-radius:0;
+}
+.badge-form .btn{justify-self:start}
+.badge{
+  display:grid;
+  grid-template-columns:72px 1fr;
+  gap:14px 16px;
+  max-width:400px;
+  margin-top:6px;
+  padding:0 16px 16px;
+  border:1px solid var(--rule);
+  background:color-mix(in oklab, var(--sheet), var(--paper) 50%);
+}
+.badge-head{
+  grid-column:1 / -1;
+  margin:0 -16px;
+  padding:6px 16px;
+  background:var(--accent);
+  color:var(--on-accent);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.64rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.badge-photo{
+  height:90px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px dashed var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.52rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  text-align:center;
+  color:var(--ink-3);
+}
+.badge-name{font-family:"Archivo Black","Arial Black",sans-serif;font-size:1.3rem;line-height:1.05;letter-spacing:-.02em;overflow-wrap:anywhere}
+.badge-facts{grid-column:1 / -1;display:grid;grid-template-columns:auto 1fr;gap:3px 14px;margin:0;font-size:.82rem}
+.badge-facts dt{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding-top:3px}
+.badge-facts dd{margin:0;color:var(--ink-2)}
+.badge .linkbtn{grid-column:1 / -1;justify-self:start;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
+
 /* The window on B10: the sky as it is outside, by the visitor's clock. */
 .window{
   position:relative;
@@ -1715,6 +1767,41 @@ const SPECIALS = {
     return { label: "Card", readout: "Stamped", html: '<p class="blurb" id="timecard">' + esc(T.card) + "</p>"
       + (outOfHours(new Date()) ? '<p class="blurb">' + esc(T.overtime) + "</p>" : "") };
   },
+  /* Printed from what this browser tells every site anyway. Nothing here
+     is stored but the name (if one is given), the number and the time of
+     issue; nothing is sent anywhere. */
+  badge() {
+    const B = RECORDS.fixed.badge;
+    const kept = read("sng.badge.v1");
+    if (!kept) {
+      return { label: "Badge", readout: "Not issued", html: '<div class="badge-form"><p class="blurb">' + esc(B.prompt) + "</p>"
+        + '<label class="vh" for="badge-name">Name</label><input class="badge-input" id="badge-name" maxlength="40" autocomplete="off" placeholder="Name (optional)">'
+        + '<button class="btn btn--ghost" type="button" id="issue-badge">' + esc(B.button) + "</button></div>" };
+    }
+    const L = B.labels;
+    const ua = navigator.userAgent;
+    const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Mac OS X/.test(ua) ? "macOS"
+      : /Windows/.test(ua) ? "Windows" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "";
+    const mobile = navigator.userAgentData ? navigator.userAgentData.mobile : /Mobi|iPhone/.test(ua);
+    const kind = mobile ? "phone" : /iPad|Tablet/.test(ua) ? "tablet" : "computer";
+    const uses = os ? (/^[AEIOU]/.test(os) ? "an " : "a ") + os + " " + kind : "a " + kind;
+    let place = B.undisclosed, reads = navigator.language || B.undisclosed;
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (tz.includes("/")) place = tz.split("/").pop().replace(/_/g, " ");
+      reads = new Intl.DisplayNames(["en"], { type: "language" }).of(navigator.language) || reads;
+    } catch (e) { /* the badge prints what it can */ }
+    const at = new Date(kept.at);
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const issued = pad(at.getHours()) + ":" + pad(at.getMinutes()) + ", " + DAYS[at.getDay()] + " " + pad(at.getDate()) + " " + MONTHS[at.getMonth()] + " " + at.getFullYear();
+    const display = (matchMedia("(prefers-color-scheme: dark)").matches ? "Dark mode" : "Light mode") + ", " + screen.width + " \u00d7 " + screen.height;
+    const row = (k, v, id) => "<dt>" + esc(k) + "</dt><dd" + (id ? ' id="' + id + '"' : "") + ">" + esc(v) + "</dd>";
+    return { label: "Badge", readout: "Issued", html: '<div class="badge"><div class="badge-head">' + esc(B.header) + "</div>"
+      + '<div class="badge-photo">' + esc(B.photo) + '</div><div class="badge-name">' + esc(kept.name || "Staff no. " + kept.no) + "</div>"
+      + '<dl class="badge-facts">' + row(L.issued, issued) + row(L.from, place) + row(L.reads, reads) + row(L.uses, uses)
+      + row(L.display, display) + row(L.battery, B.undisclosed, "badge-battery") + "</dl>"
+      + '<button class="linkbtn" type="button" id="lose-badge">' + esc(B.lost) + "</button></div>" };
+  },
   /* The one room that keeps the time of day: the sky as it is outside. */
   window() {
     const h = new Date().getHours();
@@ -1730,6 +1817,18 @@ const SPECIALS = {
 /* What a special does once it is on the page. Each returns a function that
    stops it, called when the visitor leaves the room. */
 const RUNNING = {
+  /* Only where the browser offers it (Chromium); elsewhere the line stays
+     "Not disclosed", which is true. */
+  badge() {
+    const el = document.getElementById("badge-battery");
+    let live = true;
+    if (el && navigator.getBattery) {
+      navigator.getBattery().then(b => {
+        if (live) el.textContent = Math.round(b.level * 100) + "%, " + (b.charging ? "charging" : "discharging");
+      }).catch(() => {});
+    }
+    return () => { live = false; };
+  },
   timecard() {
     const T = RECORDS.fixed.timecard;
     const el = document.getElementById("timecard");
@@ -1843,11 +1942,26 @@ function personnelFile() {
     host.classList.add("arrive");
   }
   addEventListener("hashchange", () => { show(true); arrive(); });
+  host.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" && ev.target.id === "badge-name") document.getElementById("issue-badge").click();
+  });
   /* A door that leads back into the room it is in ("Continue along the
      corridor") changes nothing in the address bar, so the browser fires no
      hashchange and the click looked broken. Walk the visitor through it
      anyway: the room is entered again, from the top. */
   host.addEventListener("click", ev => {
+    if (ev.target.id === "issue-badge") {
+      const name = (document.getElementById("badge-name").value || "").trim().slice(0, 40);
+      const no = (100 + Math.floor(Math.random() * 900)) + "-" + (100 + Math.floor(Math.random() * 900));
+      try { localStorage.setItem("sng.badge.v1", JSON.stringify({ name, no, at: Date.now() })); } catch (e) { /* no badge */ }
+      show(false);
+      return;
+    }
+    if (ev.target.id === "lose-badge") {
+      try { localStorage.removeItem("sng.badge.v1"); } catch (e) { /* the badge stays */ }
+      show(false);
+      return;
+    }
     if (ev.target.id === "take-number") {
       try { localStorage.setItem("sng.ticket.v1", JSON.stringify({ n: 1000000 + Math.floor(Math.random() * 9000000), at: Date.now() })); } catch (e) { /* no number */ }
       show(false);
