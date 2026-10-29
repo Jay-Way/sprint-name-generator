@@ -1263,6 +1263,7 @@ function renderRoom(room, extra) {
      itself is MEADOW_SVG, put in place by the page script. */
   if (room.special === "meadow") {
     return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow" aria-hidden="true"></div>'
+      + (room.notice ? '<p class="meadow-notice">' + room.notice + "</p>" : "")
       + '<div class="meadow-caption"><p>' + room.text + '</p><nav class="exits meadow-exit" aria-label="Exits">'
       + room.exits.map(x => '<a href="#/' + x.to + '">' + x.label + "</a>").join("") + "</nav></div>";
   }
@@ -1430,8 +1431,9 @@ const MEADOW_SVG = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax sl
 <path d="M0 662 C 400 642 900 652 1600 642 L1600 900 L0 900Z" fill="url(#m-grass)"/>
 <rect width="1600" height="900" fill="url(#m-haze)"/>
 <g transform="translate(915 566)"><rect width="30" height="66" fill="#3A3F48"/><rect x="-3" y="-3" width="36" height="72" fill="none" stroke="#F5F1E8" stroke-width="4"/></g>
-<ellipse cx="690" cy="676" rx="74" ry="9" fill="#6FA650" opacity=".45"/>
-<g transform="translate(690 642)" fill="#5E6672"><rect x="-30" y="-94" width="60" height="58" rx="8"/><rect x="-36" y="-30" width="72" height="12" rx="4"/><rect x="-3" y="-18" width="6" height="34"/><rect x="-42" y="15" width="84" height="6" rx="3"/><circle cx="-40" cy="26" r="5"/><circle cx="40" cy="26" r="5"/><circle cx="0" cy="26" r="5"/></g>
+<ellipse cx="690" cy="668" rx="84" ry="8" fill="#6FA650" opacity=".45"/>
+<g transform="translate(690 664)" fill="#5E6672"><rect x="-72" y="-58" width="144" height="8" rx="2"/><rect x="-66" y="-50" width="7" height="50"/><rect x="59" y="-50" width="7" height="50"/><rect x="18" y="-50" width="41" height="30"/><rect x="34" y="-38" width="10" height="3" fill="#7A828E"/>
+<g transform="translate(-34 -58)"><rect x="-4" y="-17" width="40" height="17" rx="4" fill="#3B4049"/><rect x="-8" y="-24" width="48" height="8" rx="4" fill="#3B4049"/><g class="m-light"><circle cx="28" cy="-8" r="10" fill="#FF3B30" opacity=".22"/><circle cx="28" cy="-8" r="3.6" fill="#FF3B30"/></g></g></g>
 </svg>`;
 
 /* The torn foot of a form older than the Office: a fixed ragged edge, the
@@ -1535,12 +1537,35 @@ const RECORDS_CSS = `
 .meadow svg{display:block;width:100%;height:100%;filter:saturate(1.12) brightness(1.04)}
 .m-clouds{animation:drift 90s ease-in-out infinite alternate}
 @keyframes drift{to{transform:translateX(-70px)}}
+/* Up in the empty sky, so the desk stays in view below it. */
 .meadow-caption{
-  position:fixed;left:0;right:0;bottom:8vh;z-index:1;
+  position:fixed;left:0;right:0;top:max(9vh, 48px);z-index:1;
+  max-width:60ch;
+  margin:0 auto;
+  padding:0 16px;
   text-align:center;
-  font-size:1rem;
+  font-size:.95rem;
+  line-height:1.55;
   color:#46525E;
 }
+/* The containment notice, small, on a sign at the edge of the field. */
+.meadow-notice{
+  position:fixed;bottom:16px;left:16px;z-index:1;
+  max-width:280px;
+  margin:0;
+  padding:8px 10px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(70,82,94,.3);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.6rem;
+  line-height:1.55;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#46525E;
+}
+/* The telephone. You cannot hear it. */
+.m-light{animation:blink 1.4s steps(1) infinite}
+@keyframes blink{50%{opacity:.12}}
 .meadow-caption p{margin:0 0 14px}
 .meadow-exit{display:flex;justify-content:center}
 .meadow-exit a{
@@ -1552,7 +1577,7 @@ const RECORDS_CSS = `
   text-decoration:underline;
   text-underline-offset:4px;
 }
-@media (prefers-reduced-motion:reduce){.m-clouds{animation:none}}
+@media (prefers-reduced-motion:reduce){.m-clouds,.m-light{animation:none}}
 
 /* The Long Corridor: the page is the length of it. */
 .long{height:140vh}
