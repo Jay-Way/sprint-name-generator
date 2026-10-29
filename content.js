@@ -413,11 +413,10 @@ const RECORDS = {
   },
 
   /* The ticket machine at reception, B1. The number is kept in this
-     browser (sng.ticket.v1) and shredded with the minutes.
-     DRAFT, awaiting sign-off. */
+     browser (sng.ticket.v1) and shredded with the minutes. */
   ticket: {
     button: "Take a number",
-    none: "A ticket machine, bolted to the counter. It dispenses one number per visitor.",
+    none: "A worn out ticket machine, bolted to the counter. It dispenses one number per visitor.",
     taken: "Your number is {n}. Please wait to be called."
   },
 
@@ -476,7 +475,7 @@ const RECORDS = {
       /* DRAFT, awaiting sign-off. Heads the list of names. */
       summary: "File opened {date}. Designations on record: {n}."
     },
-    /* DRAFT, awaiting sign-off. The badge is printed from what the browser
+    /* The badge is printed from what the browser
        already tells every site it visits: time zone, language, system,
        display, battery where offered. Read when the badge is shown and
        never kept; only the name, if given, the number and the time of
@@ -494,11 +493,10 @@ const RECORDS = {
       undisclosed: "Not disclosed",
       labels: { issued: "Issued", from: "From", reads: "Reads", uses: "Uses", display: "Display", battery: "Battery" }
     },
-    /* DRAFT, awaiting sign-off: department, timecard, committee, long. */
     department: {
       d: 3, at: 2, special: "department",
       name: "Departmental Records",
-      text: "A shelf of box files, one per department, each labelled with a file number.",
+      text: "A shelf of box files, one per department, each labelled with a file number. Some full of dust, some brand new.",
       notice: "Departments are responsible for their own adoptions.",
       summary: "Department {file}. Designations adopted: {n}.",
       none: "No department is on file for this visitor. One may be assigned in due course."
@@ -514,7 +512,7 @@ const RECORDS = {
     committee: {
       d: 6, at: 3, special: "committee",
       name: "Committee Room",
-      text: "A long table, fully attended by chairs. The committee is in session.",
+      text: "A long table, fully attended by chairs. The committee is in session. Faint buzzing sounds from the neon lights.",
       notice: "Sessions are held whether or not the committee is present.",
       result: "No designation issued"
     },
@@ -523,32 +521,31 @@ const RECORDS = {
     long: {
       d: 7, at: 1, special: "long", through: true,
       name: "The Long Corridor",
-      text: "A corridor. It goes on.",
+      text: "A corridor. It goes on. The doors seem to be locked. Some are missing the handles. After half of the corridor, there is a red line painted on the floor and walls.",
       notice: "Halfway point. Please do not stop at the halfway point."
     },
-    /* DRAFT, awaiting sign-off: window, meadow.
-       The window is the one room that changes with the time of day - by
+    /* The window is the one room that changes with the time of day - by
        decision, 29 Oct: it shows the sky as it is outside, now, by the
        visitor's own clock, on a level with no outside. */
     window: {
       d: 10, at: 2, special: "window",
       name: "Office with a Window",
-      text: "An office with a window. The window looks out on the sky. This is level B10.",
-      notice: "The window has been approved."
+      text: "An office with a window. Beyond the glass, a pale afternoon sky. A few clouds pass slowly overhead. There is no visible ground, and the window is too high to see the horizon. There is a small brass handle on the frame, but it has been fitted on the other side.",
+      notice: "The window has been approved. Window must remain closed during working hours."
     },
     /* The form is not here. Only the line below and the way back. */
     meadow: {
       d: 12, at: 3, special: "meadow",
       name: "Storage (External)",
-      text: "This room is classified as storage.",
-      notice: "",
+      text: "Beyond the door is a vast meadow beneath a cloudless sky. The grass moves gently in a breeze you cannot feel. Far away stands a desk, facing the doorway. There is a telephone on it. You cannot hear it ringing, but you can see the blinking red light of the telephone.",
+      notice: "Do not enter. Do not try to answer the phone. Under no circumstances retrieve objects from the meadow.",
       exit: "Return through the door"
-    },
+      },
     answers: {
       d: 11, at: 1,
       name: "Department of Answers",
       text: "A small office. Two chairs. A filing cabinet. A notice on the desk states that all enquiries have been answered.",
-      notice: "Please refrain from asking questions that have already been resolved."
+      notice: "Please refrain from asking questions that should remain unanswered. Incident MORT-23554 should not be repeated.",
     }
   },
 
