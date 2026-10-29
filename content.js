@@ -416,7 +416,7 @@ const RECORDS = {
      browser (sng.ticket.v1) and shredded with the minutes. */
   ticket: {
     button: "Take a number",
-    none: "A worn out ticket machine, bolted to the counter. It dispenses one number per visitor.",
+    none: "A worn-out ticket machine, bolted to the counter. It dispenses one number per visitor.",
     taken: "Your number is {n}. Please wait to be called."
   },
 
@@ -472,7 +472,6 @@ const RECORDS = {
       text: "A filing cabinet with one drawer, labelled with today’s date. It holds a single file. The file is yours.",
       notice: "The Office does not keep your minutes. Somebody down here does.",
       empty: "The file has been prepared. It is empty. It is not expecting to stay that way.",
-      /* DRAFT, awaiting sign-off. Heads the list of names. */
       summary: "File opened {date}. Designations on record: {n}."
     },
     /* The badge is printed from what the browser
@@ -512,7 +511,7 @@ const RECORDS = {
     committee: {
       d: 6, at: 3, special: "committee",
       name: "Committee Room",
-      text: "A long table, fully attended by chairs. The committee is in session. Faint buzzing sounds from the neon lights.",
+      text: "A long table, fully attended by chairs. The committee is in session. Faint buzzing from the fluorescent lights.",
       notice: "Sessions are held whether or not the committee is present.",
       result: "No designation issued"
     },
@@ -530,14 +529,14 @@ const RECORDS = {
     window: {
       d: 10, at: 2, special: "window",
       name: "Office with a Window",
-      text: "An office with a window. Beyond the glass, a pale afternoon sky. A few clouds pass slowly overhead. There is no visible ground, and the window is too high to see the horizon. There is a small brass handle on the frame, but it has been fitted on the other side.",
+      text: "An office with a window. Beyond the glass, the sky. There is no visible ground, and the window is too high to see the horizon. There is a small brass handle on the frame, but it has been fitted on the other side.",
       notice: "The window has been approved. Window must remain closed during working hours."
     },
     /* The form is not here. Only the line below and the way back. */
     meadow: {
       d: 12, at: 3, special: "meadow",
       name: "Storage (External)",
-      text: "Beyond the door is a vast meadow beneath a cloudless sky. The grass moves gently in a breeze you cannot feel. Far away stands a desk, facing the doorway. There is a telephone on it. You cannot hear it ringing, but you can see the blinking red light of the telephone.",
+      text: "Beyond the door is a vast meadow beneath a cloudy sky. The grass moves gently in a breeze you cannot feel. Far away stands a desk, facing the doorway. There is a telephone on it. You cannot hear it ringing, but you can see the blinking red light of the telephone.",
       notice: "Do not enter. Do not try to answer the phone. Under no circumstances retrieve objects from the meadow.",
       exit: "Return through the door"
       },
