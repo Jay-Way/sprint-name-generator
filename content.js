@@ -382,4 +382,296 @@ const DOCUMENTS = {
   note: "Documents not listed in this index are not held by the Office. Documents listed in this index are not, on that basis alone, held by the Office either."
 };
 
-module.exports = { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS };
+/* ---------- Records and Retention ----------
+   The basement - see docs/plans/records-and-retention.md. build.js
+   assembles rooms from these fragments with a seeded generator, so
+   everything here is plain text (no markup: it is set with
+   textContent) and {d} stands for the level number.
+
+   The rule above all the others: the building does not become more
+   hostile on the way down. It becomes more familiar with the visitor.
+   The Office is never alarmed, never explains itself, and nothing in
+   it is in charge. Every inexplicable thing has been properly filed.
+
+   Random fragments are the filler. The spine is three threads that
+   run down the landings, one line per level, because every level is
+   entered by its landing and so every visitor reads them in order:
+   the engineer at the lift, the visitor's own administrative status,
+   and Klaus, who is referred to and never seen.
+
+   STATUS: signed off for B1-B12 and the weekend, 29 Oct 2026. New lines
+   go in as drafts and are marked as such until they are signed off too. */
+const RECORDS = {
+  title: "Records and Retention",
+  desc: "Records and Retention. Lower ground floor, and below it.",
+
+  /* B1's landing. Also what the page shows before its script has run.
+     Its notice is the first line of the status thread, levels[0]. */
+  reception: {
+    name: "Records and Retention",
+    text: "Records and Retention is open. It has been open since it was closed, which is the usual arrangement in this building."
+  },
+
+  /* For a visitor who has been deep and comes back up to B1. Replaces
+     the reception notice; read from this browser's own storage. */
+  welcomeBack: "Welcome back.",
+
+  /* The two threads, one entry per level from B1 to B12. B13 has no
+     lift and no notices: see the plan. The engineer's last line is
+     his B5 line again. */
+  levels: [
+    { lift: "Out of order. Please use the stairs.",
+      status: "Visitors must sign in at reception. Please take a number. Now serving: 0." },
+    { lift: "Out of order. An engineer has been called.",
+      status: "Your visit has been logged. The purpose of your visit has been entered as ‘visit’." },
+    { lift: "Out of order. An engineer is on the way.",
+      status: "This level is not open to visitors. Your visit has been reclassified accordingly." },
+    { lift: "Out of order. The engineer has arrived.",
+      status: "Your visitor pass has been extended." },
+    { lift: "Out of order. The engineer is still here.",
+      status: "Your visitor pass has been extended. Visitor passes are not normally extended." },
+    { lift: "Out of order. The engineer has requested assistance.",
+      status: "A desk has been allocated to you. It is on a lower floor." },
+    { lift: "Out of order. Assistance has been declined.",
+      status: "Your probationary period has concluded." },
+    { lift: "Out of order. The engineer’s contract has been extended.",
+      status: "Your personnel file has been opened. It was already open." },
+    { lift: "Out of order. The engineer is no longer assigned to this lift.",
+      status: "Your absence from yesterday’s meeting has been excused." },
+    { lift: "Out of order. The engineer remains assigned to this floor.",
+      status: "Your annual review has been completed. You were present." },
+    { lift: "Out of order. The engineer has been included in the inventory.",
+      status: "Your request for resignation has been received." },
+    { lift: "Out of order. The engineer is still here.",
+      status: "Your resignation has been rejected due to insufficient staffing." }
+  ],
+
+  /* Fixed rooms, at the same address for everyone. `at` is the index of
+     the corridor on that level they open off. */
+  fixed: {
+    "office-k": {
+      d: 2, at: 1,
+      name: "Office of K.",
+      text: "A desk. A chair, pushed in. A cup of tea, half finished. A note on the blotter: ‘Back shortly. Please do not wait.’",
+      notice: "Do not disturb. Sign-off in progress."
+    },
+    /* The drawer from the plan, filed as the visitor's personnel file.
+       The page lists this browser's issued names under the text, from
+       localStorage, and says so in its source. */
+    personnel: {
+      d: 8, at: 2,
+      name: "Personnel — Visitor (Provisional)",
+      text: "A filing cabinet with one drawer, labelled with today’s date. It holds a single file. The file is yours.",
+      notice: "The Office does not keep your minutes. Somebody down here does.",
+      empty: "The file has been prepared. It is empty. It is not expecting to stay that way."
+    },
+    answers: {
+      d: 11, at: 1,
+      name: "Department of Answers",
+      text: "A small office. Two chairs. A filing cabinet. A notice on the desk states that all enquiries have been answered.",
+      notice: "Please refrain from asking questions that have already been resolved."
+    }
+  },
+
+  /* B(open + 1), while the levels below it are still being written. */
+  closed: {
+    name: "Access Closed",
+    text: "Access below B{d} is closed pending review. The review is being conducted from below.",
+    notice: "Do not use the stairs. The stairs are in use."
+  },
+
+  /* Any address that is not on the plan. */
+  unknown: {
+    name: "Not on the Plan",
+    text: "This room is not on the plan. The plan has been notified, and will be amended to include it, or it to include the plan.",
+    notice: ""
+  },
+
+  /* Ordinary rooms and notices, at every depth, about one in five. A
+     store of toner cartridges is nothing on B1. On B11, between rooms
+     that have stopped distinguishing a thing from its record, it is the
+     most suspicious room in the building. Keep these utterly plain. */
+  mundane: {
+    rooms: [
+      { name: "Stationery", text: "Pens, staples, paper clips. A ream of A4, still in its wrapper." },
+      { name: "Toner", text: "Spare toner cartridges, boxed and labelled by printer model." },
+      { name: "Kitchenette", text: "A kettle, a sink, and a mug tree with one mug on it." },
+      { name: "Cleaning Supplies", text: "A mop, a bucket, and a ‘Wet Floor’ sign, folded." },
+      { name: "Furniture Store", text: "Office chairs, stacked four high. One of them has a cushion." },
+      { name: "Post Room", text: "Pigeonholes, labelled by department. The post has been sorted." }
+    ],
+    notices: [
+      "Please keep this corridor clear.",
+      "Recycling is collected on Thursdays.",
+      "Mind the step."
+    ]
+  },
+
+  /* Saturdays and Sundays, by the visitor's own clock. Words only: the
+     rooms, their addresses and their doors do not change, and build.js
+     fails if they would. The reception line is added to B1's text; the
+     notices stand in for the mundane ones, at every depth. */
+  weekend: {
+    reception: "The building is closed for the weekend. The basement is not part of the building.",
+    notices: [
+      "Weekend cover: Klaus.",
+      "Heating is off for the weekend. It has been off for some time.",
+      "The lights on this floor are on a weekday timer. The timer has not been told."
+    ]
+  },
+
+  /* Depth bands, each with its own thesis. A level takes the first band
+     whose upTo it does not exceed. The transitions are soft on purpose:
+     the mundane pool runs through all of them. */
+  bands: [
+    {
+      /* B1-B3 - Neglect. Recognisably an office. Procedures are
+         circular, departments redundant, nobody minds. */
+      upTo: 3,
+      landing: [
+        "Stairwell. The handrail is cold. The stairs go down further than the building does.",
+        "Stairwell. A sign on the wall gives this level as B{d}. A second sign, beneath it, agrees.",
+        "Stairwell. Somebody has propped the fire door open with a box file. The box file is labelled ‘Fire Door’."
+      ],
+      corridor: [
+        "A corridor of strip lighting and closed doors, every one of them numbered, none of them in order.",
+        "A corridor. Archive boxes line one wall, stacked to the height of a person and no higher.",
+        "A corridor with carpet tiles in two colours. The pattern does not repeat. It is slightly different on each floor."
+      ],
+      corridorNotice: [
+        "Floor plan of this level. You are here. The plan has been updated to show that you are here.",
+        "Cleaning rota: Mon — Klaus. Tue — Klaus. Wed — Klaus. Thu — Klaus. Fri — rota under review.",
+        "Visitors must be accompanied beyond this point. You are beyond this point.",
+        "Strip lighting in this corridor is on a timer. The timer is on a timer.",
+        "Archive boxes awaiting collection. Collection awaiting approval. Approval awaiting collection.",
+        "Water cooler. Out of cups since Rev. 2.",
+        "Please report missing signage using the form indicated on the missing sign.",
+        "The suggestion box has been sealed following a suggestion.",
+        "Staff are reminded that the emergency exit is for emergencies approved in advance.",
+        "All requests for leave must be countersigned by K."
+      ],
+      rooms: [
+        { name: "Withdrawn Forms", text: "Forms SN-01 to SN-08, in triplicate. Every third copy is of SN-03." },
+        { name: "Archive, Quarterly", text: "Shelving, floor to ceiling, labelled by quarter. The quarters run forward to Q3 and then resume at Q1 of the same year." },
+        { name: "Cross-References", text: "Box files, each holding a single sheet. Each sheet reads: see box file." },
+        { name: "Secure Filing", text: "A filing cabinet with four drawers. Three are locked. The fourth contains a key which does not seem to fit any of the drawers." },
+        { name: "Designations Returned Unused", text: "Designations returned unused, each with its reason attached. Most of the reasons read ‘too accurate’." },
+        { name: "Approvals", text: "A rubber stamp reading APPROVED, worn smooth with use, beside an ink pad that has never been inked." },
+        { name: "Minutes of Meetings Not Held", text: "A large table with twelve chairs. The minutes record that the meeting was cancelled due to insufficient seating." },
+        { name: "Duplicates", text: "Six identical filing cabinets. The labels have been removed to avoid duplication." },
+        { name: "Scheduling", text: "A desk calendar, open at last Tuesday. Every page is last Tuesday." },
+        { name: "Unclaimed Responsibilities", text: "Shelves of boxes, each labelled with a task. None has been signed for. One is labelled ‘Signing for boxes’." },
+        { name: "Department of Minor Corrections", text: "A stack of correction slips, each correcting the one beneath it. The bottom slip is blank." }
+      ]
+    },
+    {
+      /* B4-B6 - Contradiction. Documents refer to themselves. The Office
+         records things that have not happened. People are absent
+         without having left. */
+      upTo: 6,
+      landing: [
+        "Stairwell. The handrail is cold. It was cold on the floor above, and it has not warmed up since.",
+        "Stairwell. The sign on the wall gives this level as B{d}. The second sign is still deciding.",
+        "Stairwell. The steps are numbered. The numbering began again at some point, and nobody noticed where."
+      ],
+      corridor: [
+        "A corridor of strip lighting and closed doors. You have been in a corridor like this. That was a different corridor.",
+        "A corridor. Archive boxes line both walls now, stacked to the height of a person, and then one more.",
+        "A corridor with carpet tiles in two colours. The pattern has started to repeat. It repeats from here."
+      ],
+      corridorNotice: [
+        "Floor plan of this level. You are here. You were also here earlier.",
+        "Cleaning rota: Mon — . Tue — . Wed — . Thu — . Fri — .",
+        "Visitors must be accompanied beyond this point. You are accompanied.",
+        "This corridor is under review. Please continue to use it while it is under review.",
+        "Lighting on this level is motion-activated. The lights are on.",
+        "Lost property. Items may be reclaimed from the level they were lost on. Items were lost on all levels.",
+        "Attendance is mandatory. Attendance has been recorded on your behalf.",
+        "This floor is undergoing an inventory. You have been counted.",
+        "Klaus has approved the revised procedure. Klaus has not been consulted."
+      ],
+      rooms: [
+        { name: "Revisions Earlier Than the First", text: "A Rev. 2 of a document that never had a Rev. 1. The revision history lists the removal of its author." },
+        { name: "Minutes of This Meeting", text: "Minutes of a meeting held in this room. The list of attendees is the list of the room’s contents." },
+        { name: "Archive, Quarterly (Current)", text: "Shelving, labelled by quarter. All of the quarters are this one." },
+        { name: "Do Not File", text: "A box file marked ‘Do not file’. It is full, and has been filed." },
+        { name: "Reasons, Removed", text: "Designations returned unused. The reasons have been removed, and filed separately, on a lower level." },
+        { name: "Overflow Storage (Overflow)", text: "Boxes marked ‘Overflow’, stacked out into the corridor. The corridor has been reclassified as storage." },
+        { name: "Personnel (Unaccounted For)", text: "Three desks, arranged for four employees. All four have submitted their timesheets." },
+        { name: "Formerly Occupied Positions", text: "A coat hangs behind the door. The personnel register lists its owner as the room." },
+        { name: "Telephony", text: "A telephone is ringing inside a locked filing cabinet. The call has been logged as outgoing." },
+        { name: "Department of Subsequent Approval", text: "A tray of forms, all approved. Each was approved before it was submitted." }
+      ]
+    },
+    {
+      /* B7-B9 - Autonomy. The Office no longer needs anyone to operate.
+         Decisions are taken by departments that have never existed. */
+      upTo: 9,
+      landing: [
+        "Stairwell. The handrail has been replaced with a handrail of the same description.",
+        "Stairwell. The sign on the wall gives this level as B{d}. It has been countersigned.",
+        "Stairwell. A notice gives the number of steps to the next level. The number has been revised upward."
+      ],
+      corridor: [
+        "A corridor of open office doors. Every desk is in use. Nobody is at any of them.",
+        "A corridor. A photocopier at the far end is copying. Its output tray is empty, and its counter is rising.",
+        "A corridor lined with framed staff photographs. The frames have been signed off. The photographs are pending."
+      ],
+      corridorNotice: [
+        "The Office recognises your presence. No further action is required at this time.",
+        "The department has been dissolved. Please direct all enquiries to the department.",
+        "The committee has reached a decision. Membership will be determined retrospectively.",
+        "Any resemblance between this floor and the previous floor is under investigation.",
+        "Meetings on this floor are held as scheduled. Minutes are circulated in advance.",
+        "The last inspection was conducted by Klaus. No inspector was present."
+      ],
+      rooms: [
+        { name: "Office of the Acting Office", text: "A single desk, facing the wall. Its occupant has been promoted out of the room without leaving it." },
+        { name: "Organisation", text: "An organisational chart covers the entire wall. Every department reports to the department below it." },
+        { name: "Personnel, Provisional", text: "A filing cabinet containing the complete employment history of the filing cabinet." },
+        { name: "Unscheduled Outcomes", text: "A whiteboard of decisions, each dated, each ticked. None of the decisions has a subject." },
+        { name: "Internal Affairs (Internal)", text: "A sealed envelope addressed to this room, from this room. It has been opened and resealed." }
+      ]
+    },
+    {
+      /* B10-B12 - Space, time and identity are matters of office policy.
+         The language stays completely ordinary. */
+      upTo: 12,
+      landing: [
+        "Stairwell. The floor above has been archived. The stairs up remain in use.",
+        "Stairwell. The sign on the wall gives this level as B{d}, as at the last revision.",
+        "Stairwell. The stairs continue down. Their continuation has been approved until further notice."
+      ],
+      corridor: [
+        "A corridor. It is the same length in both directions, which has been noted.",
+        "A corridor with a window. The window overlooks the corridor.",
+        "A corridor, recently superseded. The previous corridor remains in use."
+      ],
+      corridorNotice: [
+        "Your departure has been recorded. Your continued presence is not considered a discrepancy.",
+        "The distinction between original and copy has been suspended pending clarification.",
+        "The building’s continued existence has been approved until further notice.",
+        "This floor has been superseded by a more recent version. The previous version remains in use.",
+        "There is no department at this address. Its operating budget remains unchanged.",
+        "Klaus is not responsible for the condition of this floor.",
+        "Klaus has been notified of your arrival. This is not a warning."
+      ],
+      rooms: [
+        { name: "Office of Prior Existence", text: "An office, fully furnished, with a plaque giving the dates it existed. Both dates have passed." },
+        { name: "Continuity Assurance", text: "A clock with no hands. Its maintenance record confirms that it has never lost a minute." },
+        { name: "Physical Premises (Disputed)", text: "A room containing only a floor plan. The plan shows a room containing only a floor plan. A correction has been requested." },
+        { name: "Records Without Referents", text: "Shelving labelled A to Z. The shelves are empty. The labels have been filed." },
+        { name: "Aspect", text: "A desk, a chair, and a window overlooking the desk, the chair, and the window." }
+      ]
+    }
+  ],
+
+  /* Self-looping corridors and the occasional dead end. */
+  loopName: "Corridor between B{d} and B{d}",
+  loopExit: "Continue along the corridor",
+  spurName: "No Through Route",
+  spurText: "A short corridor, ending in a wall. The wall has been painted to match the corridor, so that the corridor appears to go on.",
+  spurNotice: "No through route. This has been confirmed from both ends."
+};
+
+module.exports = { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS, RECORDS };

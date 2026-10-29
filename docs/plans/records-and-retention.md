@@ -1,7 +1,79 @@
 # Records and Retention — the basement
 
-Status: **planned, not started.** Supersedes nothing in `IDEAS.md`; the
-escalation puzzle stays on ice and is kept clear of (see *Collisions*).
+Status: **phases 1 and 2 built** (generator, building inspection, source-comment
+entrance; decay and weekend view). Texts for B1–B12 and the weekend signed off on
+29 Oct 2026. Live: B1–B4 (`RECORDS_OPEN = 4`). Supersedes nothing in `IDEAS.md`;
+the escalation puzzle stays on ice and is kept clear of (see *Collisions*).
+
+## Decisions (27 Oct 2026)
+
+| Question | Decision |
+|---|---|
+| URL | `/records-and-retention` |
+| Depth | 13 levels, with occasional dead ends (always with a way back) |
+| Decay | Subtle: the visitor should notice around B6 that it has been going on for a while |
+| Texts | Claude drafts, the owner signs off or rewrites. Drafts live in `RECORDS` in `content.js`, marked as such |
+| Klaus | In, as a place: *Office of K.* on B2, fixed address `#/b2/office-k`. Referred to on notices at every depth, **never seen**. No puzzle attached |
+| B13 | Empty for now. A twist or an onward link may come later; nothing is built for it yet |
+| Entrances | All three: source comment, after-hours seal, Form SN-03's service stairs |
+| Time | Rooms never change with the time of day. A distinct **weekend** view is wanted (see below) |
+| The drawer | Now the visitor's **personnel file**, fixed at `#/b8/personnel`; shows the visitor's issued names and the record's opening date |
+
+### The weekend
+
+On Saturdays and Sundays (`officeShift() === "weekend"`, the visitor's own
+clock) the basement is visibly the same building with the lights off:
+the same rooms at the same addresses, but a dimmer sheet, and notices
+swapped for weekend ones where a weekend notice exists (*"The building is
+closed for the weekend. The basement is not part of the building."*). The
+hour of day changes nothing. Belongs in phase 2 (styling) and phase 3
+(the weekend notices).
+
+## Revision (29 Oct 2026)
+
+A review found the real weakness of phase 1: it was a random generator with
+a good voice. Every room was funny on its own and interchangeable with every
+other; nothing developed, nothing recurred, and B4 knew no more than B1.
+What was taken from it, and what was not:
+
+**Taken**
+
+- **The governing rule:** the building does not become more hostile on the
+  way down. It becomes *more familiar with the visitor*. Nobody is in charge,
+  nothing is malicious, nothing is explained, and every inexplicable event has
+  been properly filed.
+- **A thesis per band** (see *Content*), compressed from the review's five
+  phases into our thirteen levels. The empty B13 becomes the end of that
+  progression — records without referents — rather than a stop.
+- **Mundane rooms at every depth**, about one in five. A toner cupboard on B11
+  is the most suspicious room in the building.
+- **Three threads as the spine**, carried on the landings because every level
+  is entered by its landing: the engineer at the lift, the visitor's
+  administrative status, and Klaus.
+- **The drawer becomes the personnel file**, so it belongs to the status
+  thread instead of being a one-off.
+- **"Welcome back."** at reception for a visitor who has been deep.
+- **The Department of Answers**, fixed on B11.
+- **Rooms written as name + text pairs**, instead of a tag system. Corridors
+  and notices stay freely combined; there chance does no harm.
+- Most of the proposed fragments.
+
+**Not taken**
+
+- **Levels past 13** (the review went to B41). Thirteen was decided; the
+  progression fits.
+- **"Your replacement has been requested."** Too good to waste, and it is an
+  ending, which is to say a twist. **Parked as the candidate for B13** if B13
+  ever gets one.
+- **Rule notices that threaten** ("Do not acknowledge personnel who have not
+  acknowledged you first"). That is the Backrooms rule-list trope, and it
+  makes the building hostile, against the governing rule. Where the idea was
+  good it was defused: *"This floor is undergoing an inventory. You have been
+  counted."*
+- **Several state flags** (`visitedKlaus`, `engineerStatus`,
+  `visitorStatus`). The engineer and the status follow from depth alone. The
+  only state is the deepest level reached; each further flag erodes "same
+  address, same room".
 
 ---
 
@@ -11,12 +83,14 @@ The Sprint Designation Office has a basement. Nobody is told. It is reached
 through doors that were always on the site, it is built from the same form
 the visitor already knows, and it goes down. The deeper it goes the less the
 form holds together: section numbers keep counting, revisions count
-backwards, ink drains out of the page, corridors connect to themselves. Once,
-roughly two-thirds of the way down, the visitor finds a drawer with their own
-name on it, and it contains what they have been issued. Then the rooms empty,
-the fields lose their contents, and at the bottom there is only ruled paper.
-No puzzle, no reveal, no lore drop. The one consequence is that the form
-upstairs remembers they went.
+backwards, ink drains out of the page, corridors connect to themselves. And
+the Office, which began by asking the visitor to sign in, gradually starts
+treating them as staff: their pass is extended, a desk is allocated, their
+probation concludes. On B8 their personnel file is waiting, and it contains
+what they have been issued. Their resignation is received, and rejected for
+insufficient staffing. At the bottom there is only ruled paper. No puzzle,
+no reveal, no lore drop. The consequences are small: the form upstairs
+remembers they went, and reception says *Welcome back.*
 
 Reference points, in order of weight: **Control** (a federal bureau that is
 larger inside than out, and treats that as an administrative matter), **the
@@ -34,6 +108,8 @@ shows how far the same premise goes.
 
 ### Rules the build must keep
 
+0. **Familiar, never hostile. Never explained.** The governing rule from the
+   revision. Every line in `RECORDS` answers to it.
 1. **It never touches the tool.** No change to the generator's behaviour, its
    speed, its layout, or its first paint. A visitor who never finds the
    basement must not be able to tell it exists.
@@ -76,7 +152,9 @@ Cost: one page, one more object in `manifest.json`, no change to the workflow.
 
 ### The graph
 
-Thirteen levels, **B1 to B13**. Every room has 2–4 exits drawn from:
+Thirteen levels, **B1 to B13**. `RECORDS_OPEN` in `build.js` says how many
+are built; the landing below the last one is *Access Closed* until its band
+of fragments exists. Every room has 2–4 exits drawn from:
 
 | Exit | Behaviour |
 |---|---|
@@ -94,6 +172,14 @@ the documents index — the joke only works if it is accurate.
 
 Target: reaching B13 should take a determined visitor 10–20 minutes, not an
 hour. The labyrinth should feel endless, not be tedious.
+
+Measured with the phase 1 generator over 500 seeds and all 13 levels: no
+traps, a shortest route of ~32 rooms, and a simulated visitor who takes
+anything marked "down" 70% of the time and otherwise wanders needs a median
+of ~185 rooms. Pressing "Stairs down" repeatedly reaches B4 and stops
+working there, by design: from B4 the landing's stairs increasingly arrive
+back on the same level, never next to the real service stairs. The knob is
+`fakeDown` in `rLevel()`.
 
 ### Decay by depth (idea 3)
 
@@ -117,28 +203,40 @@ page doing something at the visitor.
 Dark mode gets the same decay through the same tokens; check both themes at
 every band.
 
-### Content: fragments, not pages
+### Content: threads, bands, and filler
 
-Rooms are assembled from fragments in a new `RECORDS` export in
-`content.js`, next to `MEMO`. Writing them is the real work of this project,
-and the generator is only as good as they are.
+All prose is `RECORDS` in `content.js`. Writing it is the real work of this
+project; the generator is only as good as it is.
 
-- **Room names** per depth band: *Withdrawn Forms*, *Minutes, Unread*,
-  *Revisions Not Adopted*, *Corridor between B3 and B3*, *Overflow Storage
-  (Overflow)*, *Retention Pending Review Pending Review*.
-- **Notices** pinned to walls: lift notices, fire-drill instructions for a
-  building with no occupants, a rota with one name repeated, a memo about
-  memos.
-- **Drawer contents**: forms that were never issued, designations struck
-  through for reasons given in full, a Rev. 2 of a document that never had a
-  Rev. 1.
-- **Committee log lines without a committee**, reusing the `.cline` style:
-  `01  Convening…`, then nothing.
+**The threads** are the spine. They live on the landings, one line per level
+from B1 to B12, so every visitor reads them in order:
 
-Rough budget: around 60 fragments across the bands, each in the house voice.
-`build.js` validates the shape of `RECORDS` the way it already validates
-`GENRE_PAGES`, so a missing band fails the build rather than rendering an
-empty room.
+| Thread | Where | Arc |
+|---|---|---|
+| The engineer | the lift exit, which is always out of order | called (B2) → arrived (B4) → *still here* (B5) → requests assistance, declined, contract extended, reassigned, included in the inventory → *still here* again (B12) |
+| The visitor's status | the landing notice | sign in (B1) → pass extended (B4) → desk allocated (B6) → probation concluded (B7) → personnel file opened (B8) → review completed (B10) → resignation received (B11) → rejected for insufficient staffing (B12) |
+| Klaus | corridor notices, every band | the rota (B1–B3) → approves without being consulted (B4–B6) → inspects with no inspector present (B7–B9) → is notified of your arrival; this is not a warning (B10–B12). His office is ordinary: half a cup of tea, *Back shortly. Please do not wait.* He never appears |
+
+**The bands** each have a thesis. Transitions are soft; the mundane pool runs
+through all of them.
+
+| Levels | Thesis | Typical line |
+|---|---|---|
+| B1–B3 | **Neglect.** Recognisably an office; procedures circular, nobody minds | *The suggestion box has been sealed following a suggestion.* |
+| B4–B6 | **Contradiction.** Documents refer to themselves; the absent have not left | *Attendance is mandatory. Attendance has been recorded on your behalf.* |
+| B7–B9 | **Autonomy.** The Office no longer needs anyone to operate | *The department has been dissolved. Please direct all enquiries to the department.* |
+| B10–B12 | **Policy over reality.** Space, time and identity are matters of office policy | *Your departure has been recorded. Your continued presence is not considered a discrepancy.* |
+| B13 | **Records without referents.** Nothing | — |
+
+**Filler**, drawn per room from the room's own seed: landing and corridor
+descriptions and corridor notices per band, filing rooms as name + text
+pairs, and the mundane pool (six rooms, three notices) at about one in five.
+
+**Fixed rooms**, at the same address for everyone: *Office of K.*
+(`#/b2/office-k`), the personnel file (`#/b8/personnel`), *Department of
+Answers* (`#/b11/answers`). Declared in `RECORDS.fixed` with the corridor
+they open off; the generator places them and the building inspection proves
+them reachable.
 
 Voice note: the basement is *not* scarier writing. It is the same dry
 administrative register, applied to things that should not be
@@ -146,13 +244,13 @@ administrable. The Office is never alarmed. That is the frightening part.
 
 ---
 
-## The drawer (idea 4)
+## The personnel file (idea 4)
 
-Somewhere in B7–B9 — fixed by the seed, reachable but not on the shortest
-path — is a filing room with one labelled drawer:
-
-> **Minutes — Visitor, current**
-> Retained on the Office's behalf. The Office holds no copy.
+On B8, at `#/b8/personnel`, off one of the corridors and never on the
+shortest path, is *Personnel — Visitor (Provisional)*: a cabinet with one
+drawer, labelled with today's date, holding a single file. The landing of the
+same level has just announced *Your personnel file has been opened. It was
+already open.*
 
 Opened, it lists what *this browser* has been issued, read from
 `sng.seen.v1`, grouped by genre, with the opening date from `sng.record.v1`.
@@ -162,7 +260,7 @@ Under it:
 
 If the visitor has no minutes, the drawer is empty and says so:
 
-> This drawer has been prepared. It is empty. It is not expecting to stay
+> The file has been prepared. It is empty. It is not expecting to stay
 > that way.
 
 **Why this is honest, and how to keep it so.** The list is the visitor's own
@@ -184,25 +282,33 @@ showing a team's adoptions as "your minutes" would be inaccurate.
 
 ## The bottom (idea 6)
 
-The last three levels empty out deliberately:
+B10–B12 keep their rooms and their text; what empties out there is the form
+itself, through the decay bands (readouts blank, then fields reduced to their
+labels). The threads end on the B12 landing: the engineer is still here, and
+the visitor's resignation has been rejected.
 
-- **B11:** rooms with field heads and no fields.
-- **B12:** a single line per room — *This room has not been filed.* — and one
-  exit, down.
 - **B13:** the masthead, the ruled paper, and nothing else. No exits, no copy,
-  no footer. The grid continues further than the content would need. The back
-  button works; nothing on the page suggests using it.
+  no footer, no lift. The grid continues further than the content would need.
+  The back button works; nothing on the page suggests using it.
+
+B13 is empty *for now*. If it ever gets something, the parked candidate is a
+single line: *Your replacement has been requested.*
 
 ### The mark
 
-Reaching B13 writes `sng.retention.v1` (a date). From then on the seal on
-the front-desk form gains one line, appended by script exactly the way
-`Currently unstaffed` already is:
+`sng.retention.v1` holds the deepest level this browser has reached and the
+date. It is the only state the basement keeps, and it drives two things:
 
-> Retained · B13
+- **Reception says *Welcome back.*** in place of the sign-in notice, for a
+  visitor whose deepest level is B7 or below (deep enough to have been
+  treated as staff). The line is `RECORDS.welcomeBack`.
+- **Reaching B13** adds one line to the seal on the front-desk form, appended
+  by script exactly the way `Currently unstaffed` already is:
+
+  > Retained · B13
 
 Nothing else changes. The visitor knows; no one else would notice. *Shred
-the minutes* removes the mark along with everything else.
+the minutes* removes it along with everything else.
 
 ---
 
@@ -252,27 +358,28 @@ Each phase ships on its own and leaves the site coherent.
    B1–B4 with placeholder fragments, the reachability check in `build.js`,
    entrance 1 (the source comment). Validate: the build throws on a broken
    graph; rooms are stable across reloads; no change to the front-desk form.
-2. **Decay.** `--depth` and the B1–B12 bands, reduced-motion paths, both
-   themes.
-3. **Content.** `RECORDS` in `content.js`, all bands, with build-time shape
-   validation. The bulk of the effort.
-4. **The drawer.** Including the honest source comment and the empty-drawer
-   variant.
-5. **The bottom and the mark.** B11–B13, `sng.retention.v1`, the seal line,
-   shredding takes it.
+2. **Decay.** Done (29 Oct). `--depth` and `data-band` on `<html>`: grid
+   offset and accent fade by depth; blank readouts, offset field heads,
+   creeping grid and committee-log lines from B7; no numbers and no rules
+   from B10. Weekend: dimmed sheet, a reception line, weekend notices in
+   place of the mundane ones; the building inspection fails if the weekend
+   would change a single door. Reduced motion stops the creep.
+3. **Content.** Drafted for B1–B12 (29 Oct). Remaining: sign-off, the
+   weekend notices, build-time shape validation of `RECORDS`, and raising
+   `RECORDS_OPEN` as levels are signed off.
+4. **The personnel file.** The listing from `localStorage`, the honest
+   source comment, the empty variant.
+5. **The bottom and the mark.** B13, `sng.retention.v1`, *Welcome back.*,
+   the seal line, shredding takes it.
 6. **More entrances.** After-hours link, then Form SN-03's service stairs.
 
 ---
 
 ## Open questions
 
-- **Thirteen levels** is a number chosen for being slightly wrong. Fewer
-  would be quicker to write; more would dilute the fragments.
-- **Should rooms ever change over time** (e.g. by `officeShift()`, or at
-  03:00 as the IDEAS backlog suggests)? It would break the "same address,
-  same room" rule, which might be the point, or might be the one rule the
-  basement should never break.
 - **Share-ability.** Room links are stable, so people will pass around "go to
-  B7/drawer-3". That is probably good. It means the drawer must stay at the
+  B8/personnel". That is probably good. It means fixed rooms must stay at the
   same address for every build that keeps the seed, so changing the seed is a
   breaking change and should be treated as one.
+- **B13.** Empty for now; *Your replacement has been requested.* is parked
+  for it.

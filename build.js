@@ -16,7 +16,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
-const { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS } = require("./content.js");
+const { BLURBS, GENRE_PAGES, JIRA, MEMO, REVISIONS, DOCUMENTS, RECORDS } = require("./content.js");
 
 const ORIGIN = "https://sprintname.dev";
 const OUT = path.join(__dirname, "dist");
@@ -416,7 +416,7 @@ function genreNav(current) {
     .join("\n") + "\n    </nav>";
 }
 
-function shell({ title, desc, url, stamp, ogType = "article", robotsMeta = "index, follow, max-image-preview:large", jsonLd = [], accent, body }) {
+function shell({ title, desc, url, stamp, ogType = "article", robotsMeta = "index, follow, max-image-preview:large", jsonLd = [], accent, body, extraCss = "", script = "" }) {
   const ld = jsonLd.map(o =>
     '<script type="application/ld+json">\n' + JSON.stringify(o, null, 2) + "\n</script>").join("\n");
   return `<!doctype html>
@@ -447,7 +447,7 @@ ${faviconLink}
 ${PAGE_PRELOADS}
 ${styleBlock}
 <style>
-${PAGE_CSS}
+${PAGE_CSS}${extraCss}
 </style>
 ${ld}
 </head>
@@ -475,7 +475,7 @@ ${body}
   </footer>
 
 </main>
-</body>
+${script}</body>
 </html>
 `;
 }
@@ -1028,6 +1028,367 @@ Allow: /
 Sitemap: ${ORIGIN}/sitemap.xml
 `;
 
+/* ---------- Records and Retention ----------
+   The basement. See docs/plans/records-and-retention.md for what it is
+   and why it is here; this is how it is built.
+
+   One page, rooms in the hash (#/b3/corridor-17), same convention as the
+   generator's deep links. A few hundred static room pages would cost
+   minutes on every deploy, because the workflow uploads object by object.
+
+   Every room is a pure function of its address and RECORDS_SEED. The
+   functions below run twice: here, to render B1 into the markup and to
+   prove the labyrinth has a way down from everywhere; and in the
+   browser, inlined by .toString(), to render whichever room the hash
+   names. One source, so the build cannot vouch for a building the page
+   does not then construct. They must therefore stay self-contained:
+   no references to anything else in this file.
+
+   Changing the seed moves every room. People will share room addresses,
+   so treat that as a breaking change. */
+
+const RECORDS_URL = "/records-and-retention";
+const RECORDS_SEED = "records-and-retention/1";
+/* Levels written so far. The landing one below this is "closed pending
+   review" until its band of fragments exists. The plan goes to 13. */
+const RECORDS_OPEN = 4;
+
+/* FNV-1a and mulberry32: small, fast, and identical in Node and every
+   browser, which is the only property that matters here. */
+function rHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function rRng(seed) {
+  let a = seed;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function rPick(r, list) { return list[Math.floor(r() * list.length)]; }
+
+/* A level's floor plan: a ring of corridors with filing rooms hanging off
+   them, one chord across, the service stairs somewhere along it, and from
+   B3 a dead end. From B4 the landing's own stairs down may arrive back on
+   the same level, more often the deeper it goes - the service stairs are
+   then the only real way on, and they are never where the false stairs
+   leave you. Pressing "Stairs down" repeatedly gets a visitor to B4 and
+   no further, which is roughly where the building should stop being a
+   staircase and start being a place. */
+function rLevel(d, seed) {
+  const r = rRng(rHash(seed + "/b" + d));
+  const used = new Set();
+  const draw = () => {
+    let n;
+    do { n = 1 + Math.floor(r() * 60); } while (used.has(n));
+    used.add(n);
+    return n;
+  };
+  const count = 4 + Math.floor(r() * 3);
+  const corridors = [];
+  for (let i = 0; i < count; i++) corridors.push({ n: draw(), rooms: [], loop: d >= 4 && r() < 0.3 });
+  for (const c of corridors) for (let k = Math.floor(r() * 3); k > 0; k--) c.rooms.push(draw());
+  return {
+    corridors,
+    chord: [Math.floor(r() * count), Math.floor(r() * count)],
+    stairsAt: 1 + Math.floor(r() * (count - 1)),
+    spur: d >= 3 && r() < 0.6 ? draw() : 0,
+    fakeDown: d >= 4 && r() < Math.min(0.9, 0.45 + (d - 4) * 0.12)
+  };
+}
+
+/* `weekend` swaps words, never doors: on Saturdays and Sundays the same
+   rooms stand at the same addresses with the same exits, and only some of
+   what is written in them changes. The building inspection checks that. */
+function roomAt(id, R, seed, open, weekend) {
+  const m = /^b(\d{1,2})\/(landing|corridor-(\d+)|room-(\d+)|[a-z][a-z-]*)$/.exec(id);
+  const d = m ? Number(m[1]) : 0;
+  const sub = s => s.replace(/\{d\}/g, String(d));
+  const r = rRng(rHash(seed + "/" + id));
+  /* Section numbers carry on from the front desk's 04. Orderly for three
+     levels, then they start to skip. */
+  const no = d <= 3 ? 5 + (d - 1) * 3 : 5 + (d - 1) * 3 + Math.floor(r() * (d - 3) * 9);
+  /* From B7 a corridor may hold one line of committee log with no
+     committee - the procedure from the front desk, running unattended. */
+  const room = (kind, place, name, text, notice, exits) =>
+    ({ id, d, no, kind, place, name, text, notice, exits, log: kind === "corridor" && d >= 7 && r() < 0.35 });
+  const unknown = () => ({
+    id, d: 0, no: 0, kind: "unknown", place: "Unplanned",
+    name: R.unknown.name, text: R.unknown.text, notice: R.unknown.notice,
+    exits: [{ label: "Return to Records and Retention", to: "b1/landing" }]
+  });
+  if (!m || d < 1 || d > open + 1) return unknown();
+
+  if (d === open + 1) {
+    if (m[2] !== "landing") return unknown();
+    return room("closed", "Landing", R.closed.name, sub(R.closed.text), sub(R.closed.notice),
+      [{ label: "Stairs up", to: "b" + (d - 1) + "/landing" }]);
+  }
+
+  const lv = rLevel(d, seed);
+  const band = R.bands.find(b => d <= b.upTo) || R.bands[R.bands.length - 1];
+  /* Roughly one room or notice in five comes from the mundane pool, at
+     every depth. The contrast is the point - see content.js. */
+  const plain = () => r() < 0.2;
+  const cid = c => "b" + d + "/corridor-" + c.n;
+  const corridorLink = c => ({ label: "Corridor " + c.n, to: cid(c) });
+  const fixedHere = Object.keys(R.fixed).filter(k => R.fixed[k].d === d);
+
+  if (m[2] === "landing") {
+    /* The landing carries the threads: every level is entered here, so
+       every visitor reads them, one line per level, in order. */
+    const level = R.levels[Math.min(d, R.levels.length) - 1];
+    const exits = [
+      { label: "Stairs down", to: lv.fakeDown ? cid(lv.corridors[(lv.stairsAt + 2) % lv.corridors.length]) : "b" + (d + 1) + "/landing" },
+      { label: "Stairs up", to: d === 1 ? "/" : "b" + (d - 1) + "/landing" },
+      corridorLink(lv.corridors[0]),
+      { label: "Lift", to: null, note: level.lift }
+    ];
+    return d === 1
+      ? room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits)
+      : room("landing", "Landing", "Landing, B" + d, sub(rPick(r, band.landing)), level.status, exits);
+  }
+
+  if (!m[3] && !m[4]) {
+    const f = R.fixed[m[2]];
+    if (!f || f.d !== d) return unknown();
+    return room("fixed", "Office", f.name, f.text, f.notice, [corridorLink(lv.corridors[f.at])]);
+  }
+
+  if (m[3]) {
+    const n = Number(m[3]);
+    const k = lv.corridors.length;
+    if (lv.spur && n === lv.spur) {
+      return room("spur", "Corridor " + n, R.spurName, R.spurText, R.spurNotice,
+        [corridorLink(lv.corridors[k - 1]), { label: R.loopExit, to: id }]);
+    }
+    const i = lv.corridors.findIndex(c => c.n === n);
+    if (i < 0) return unknown();
+    const c = lv.corridors[i];
+    const exits = [];
+    const add = (label, to) => { if (to !== id && !exits.some(e => e.to === to)) exits.push({ label, to }); };
+    if (i === 0) add("Landing", "b" + d + "/landing");
+    if (i === lv.stairsAt) add("Service stairs down", "b" + (d + 1) + "/landing");
+    for (const j of [i - 1, i + 1]) add("Corridor " + lv.corridors[(j + k) % k].n, cid(lv.corridors[(j + k) % k]));
+    if (lv.chord.includes(i)) {
+      const o = lv.corridors[lv.chord[0] === i ? lv.chord[1] : lv.chord[0]];
+      add("Corridor " + o.n, cid(o));
+    }
+    for (const rn of c.rooms) add("Filing room " + rn, "b" + d + "/room-" + rn);
+    for (const k of fixedHere) if (R.fixed[k].at === i) add(R.fixed[k].name, "b" + d + "/" + k);
+    if (lv.spur && i === k - 1) add("Corridor " + lv.spur, "b" + d + "/corridor-" + lv.spur);
+    /* Doors in no particular order, as in any building that grew. */
+    for (let j = exits.length - 1; j > 0; j--) {
+      const s = Math.floor(r() * (j + 1));
+      [exits[j], exits[s]] = [exits[s], exits[j]];
+    }
+    if (c.loop) exits.push({ label: R.loopExit, to: id });
+    return room("corridor", "Corridor " + n, c.loop ? sub(R.loopName) : "Corridor " + n,
+      sub(rPick(r, band.corridor)), sub(rPick(r, plain() ? (weekend ? R.weekend.notices : R.mundane.notices) : band.corridorNotice)), exits);
+  }
+
+  const n = Number(m[4]);
+  const host = lv.corridors.find(c => c.rooms.includes(n));
+  if (!host) return unknown();
+  /* Name and text are written as a pair: a room called "Telephony" should
+     not be described as carpet tiles. */
+  const pair = rPick(r, plain() ? R.mundane.rooms : band.rooms);
+  return room("room", "Filing room " + n, pair.name, sub(pair.text), "", [corridorLink(host)]);
+}
+
+/* The seal. Revisions run backwards from B4; nothing down here is Rev. 5,
+   which IDEAS.md has reserved. U+2212 for the minus: the hyphen reads as
+   a dash at this size. */
+function rStamp(room) {
+  const rev = room.d <= 3 ? 4 : 7 - room.d;
+  return [
+    "Records and Retention",
+    room.d ? "Level B" + room.d + " &#183; unstaffed" : "Level unknown",
+    "Rev. " + (rev < 0 ? "&#8722;" + -rev : rev) + " &#183; Supersedes all"
+  ];
+}
+
+function renderRoom(room) {
+  const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  /* The form comes apart in the markup as well as the styles: from B7 the
+     readouts are left blank, from B10 the fields lose their numbers. */
+  const nn = k => room.d >= 10 ? "" : String(room.no + k).padStart(2, "0") + " / ";
+  const head = (k, label, readout) => '<div class="field-head"><span class="field-label">' + nn(k) + label
+    + '</span><span class="readout">' + (room.d >= 7 ? "&nbsp;" : readout) + "</span></div>";
+  const where = room.d ? "B" + room.d + " &#183; " + e(room.place) : e(room.place);
+  let html = '<section class="field">' + head(0, "Location", where)
+    + '<h1 class="page-title" id="room-title" tabindex="-1">' + e(room.name) + "</h1>"
+    + '<p class="lede">' + e(room.text) + "</p>"
+    + (room.log ? '<div class="ghost-log" aria-hidden="true"><div class="cline"><span>01</span>Convening committee&hellip;</div></div>' : "")
+    + "</section>";
+  if (room.notice) {
+    html += '<section class="field section">' + head(1, "Notice", "Posted")
+      + '<p class="blurb">' + e(room.notice) + "</p></section>";
+  }
+  html += '<section class="field">' + head(room.notice ? 2 : 1, "Exits", room.exits.length + " marked")
+    + '<nav class="toc exits" aria-label="Exits">' + room.exits.map(x => x.to
+      ? '<a href="' + (x.to === "/" ? "/" : "#/" + x.to) + '">' + e(x.label) + "</a>"
+      : '<span class="exit-shut">' + e(x.label) + " &#8212; " + e(x.note) + "</span>").join("") + "</nav></section>";
+  return html;
+}
+
+/* The building inspection. Walks every room reachable from B1 and fails
+   the build unless the bottom is reachable, every room has a way out,
+   and no room is a trap - from anywhere, some sequence of exits leads
+   down. Dead ends are allowed; dead ends without a way back are not. */
+{
+  const at = id => roomAt(id, RECORDS, RECORDS_SEED, RECORDS_OPEN, false);
+  const doors = room => JSON.stringify(room.exits);
+  const bottom = "b" + (RECORDS_OPEN + 1) + "/landing";
+  const rooms = new Map();
+  const queue = ["b1/landing"];
+  while (queue.length) {
+    const id = queue.shift();
+    if (rooms.has(id)) continue;
+    const room = at(id);
+    if (room.kind === "unknown") throw new Error("build: the basement links to " + id + ", which is not on the plan.");
+    if (doors(roomAt(id, RECORDS, RECORDS_SEED, RECORDS_OPEN, true)) !== doors(room)) throw new Error(
+      "build: basement room " + id + " has different exits at the weekend. Words may change; doors may not.");
+    rooms.set(id, room);
+    for (const x of room.exits) if (x.to && x.to !== "/") queue.push(x.to);
+  }
+  if (!rooms.has(bottom)) throw new Error("build: the basement has no way down to " + bottom + ".");
+  const reaches = new Set([bottom]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const [id, room] of rooms) {
+      if (!reaches.has(id) && room.exits.some(x => reaches.has(x.to))) { reaches.add(id); grew = true; }
+    }
+  }
+  for (const id of rooms.keys()) {
+    if (!reaches.has(id)) throw new Error("build: basement room " + id + " is a trap - no route leads down from it.");
+  }
+  console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
+}
+
+const RECORDS_CSS = `
+/* ---------- Records and Retention only ---------- */
+.exits{margin-top:4px}
+.exit-shut{
+  display:inline-flex;
+  align-items:center;
+  padding:8px 13px;
+  border:1px dashed var(--rule);
+  color:var(--ink-3);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#room-title:focus{outline:none}
+
+/* Decay. The script sets --depth (0 at B1, 1 at B13) and data-band on
+   <html>; everything below keys off those two and nothing else. It is
+   meant to be noticed late: by B6 the visitor should suspect it has been
+   going on for a while, not have watched it start. */
+body{background-position:0 calc(var(--depth, 0) * 11px)}
+.sheet{
+  --fade:calc(var(--depth, 0) * 88%);
+  --accent:color-mix(in oklab, var(--accent-raw), var(--ink-3) var(--fade));
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .sheet{
+    --accent:color-mix(in oklab, color-mix(in oklab, var(--accent-raw), #FFFFFF 42%), var(--ink-3) var(--fade));
+  }
+}
+:root[data-theme="dark"] .sheet{
+  --accent:color-mix(in oklab, color-mix(in oklab, var(--accent-raw), #FFFFFF 42%), var(--ink-3) var(--fade));
+}
+/* B7-B9: field heads no longer quite sit on their fields, and the ruled
+   paper creeps - one line every two minutes, too slow to see moving. */
+[data-band="3"] .field:nth-child(odd) .field-head{translate:3px 0}
+[data-band="3"] .field:nth-child(even) .field-head{translate:-2px 0}
+[data-band="3"] body,[data-band="4"] body{animation:creep 120s linear infinite}
+@keyframes creep{to{background-position:0 calc(var(--depth, 0) * 11px + 28px)}}
+/* Same type as the committee log on the form, whose container sets it. */
+.ghost-log{
+  margin-top:16px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.76rem;
+  letter-spacing:.04em;
+  color:var(--ink-2);
+}
+.ghost-log .cline{opacity:.42}
+/* B10-B12: no rules between fields; what is left of the form is labels. */
+[data-band="4"] .field + .field{border-top-color:transparent}
+[data-band="4"] .field:nth-child(odd) .field-head{translate:5px 0}
+[data-band="4"] .lede{color:var(--ink-3)}
+
+/* The weekend: same building, lights off. An inset shadow paints over
+   the sheet's background and under its contents, so nothing else needs
+   to know. */
+[data-weekend] .sheet{box-shadow:inset 0 0 0 100vmax rgba(25,27,24,.06), 0 1px 0 var(--rule-soft), 0 18px 40px -32px rgba(0,0,0,.5)}
+@media (prefers-color-scheme: dark){
+  :root[data-weekend]:not([data-theme="light"]) .sheet{box-shadow:inset 0 0 0 100vmax rgba(0,0,0,.28)}
+}
+:root[data-weekend][data-theme="dark"] .sheet{box-shadow:inset 0 0 0 100vmax rgba(0,0,0,.28)}
+
+@media (prefers-reduced-motion:reduce){
+  [data-band] body{animation:none}
+}`;
+
+const recordsB1 = roomAt("b1/landing", RECORDS, RECORDS_SEED, RECORDS_OPEN, false);
+
+const recordsPage = shell({
+  title: RECORDS.title,
+  desc: RECORDS.desc,
+  url: RECORDS_URL,
+  robotsMeta: "noindex, nofollow",
+  stamp: rStamp(recordsB1),
+  extraCss: RECORDS_CSS,
+  /* B1 is in the markup, so the page is whole before - or without - the
+     script. The script only takes over when the hash names another room. */
+  body: '  <div id="room">' + renderRoom(recordsB1) + "</div>",
+  script: `<script>
+/* Records and Retention. Every room is generated from its address by the
+   functions below, which are the same functions build.js ran to check the
+   building has a way down. Nothing is fetched and nothing is stored. */
+const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
+const SEED = ${JSON.stringify(RECORDS_SEED)};
+const OPEN = ${RECORDS_OPEN};
+${[rHash, rRng, rPick, rLevel, roomAt, rStamp, renderRoom].map(f => f.toString()).join("\n")}
+(function () {
+  const host = document.getElementById("room");
+  const seal = document.querySelector(".stamp-no");
+  const root = document.documentElement;
+  /* The visitor's own calendar, as with officeShift() on the form. */
+  const weekend = [0, 6].includes(new Date().getDay());
+  if (weekend) root.dataset.weekend = "";
+  function show(moved) {
+    const m = location.hash.match(/^#\\/(.+)$/);
+    const room = roomAt(m ? m[1] : "b1/landing", RECORDS, SEED, OPEN, weekend);
+    host.innerHTML = renderRoom(room);
+    seal.innerHTML = rStamp(room).join("<br>");
+    root.style.setProperty("--depth", String(Math.max(0, room.d - 1) / 12));
+    root.dataset.band = String(room.d <= 3 ? 1 : room.d <= 6 ? 2 : room.d <= 9 ? 3 : 4);
+    document.title = room.name + " \\u2014 Records and Retention";
+    if (moved) {
+      window.scrollTo(0, 0);
+      document.getElementById("room-title").focus({ preventScroll: true });
+    }
+  }
+  addEventListener("hashchange", () => show(true));
+  /* B1 is already in the markup, as a weekday. */
+  if (location.hash || weekend) show(false);
+})();
+</script>
+`
+});
+
 /* ---------- emit ----------
    Keys are extensionless so CloudFront serves /funny-sprint-names directly
    from S3. No directory-index function to maintain. */
@@ -1065,6 +1426,9 @@ const files = [
      seal on the form. */
   { ...page(DOCS_URL, documentsPage), unlisted: true },
   { ...page(REVISIONS_URL, revisionsPage), unlisted: true },
+  /* The basement. Unlisted, noindex, linked from nowhere a visitor would
+     click by accident - see docs/plans/records-and-retention.md. */
+  { ...page(RECORDS_URL, recordsPage), unlisted: true },
   ...GENRES.map(g => page(genreUrl(g), genrePage(g))),
   { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
   ...FONTS.map(f => ({
