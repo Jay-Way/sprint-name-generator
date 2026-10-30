@@ -1152,6 +1152,7 @@ function roomAt(id, R, seed, open, weekend) {
   const cid = c => "b" + d + "/corridor-" + c.n;
   const corridorLink = c => ({ label: "Corridor " + c.n, to: cid(c) });
   const fixedHere = Object.keys(R.fixed).filter(k => R.fixed[k].d === d);
+  const postedHere = R.facilities.filter(x => x.d === d);
 
   if (m[2] === "landing") {
     /* False stairs arrive two corridors along from the service stairs -
@@ -1170,7 +1171,7 @@ function roomAt(id, R, seed, open, weekend) {
     ];
     return d === 1
       ? Object.assign(room("landing", "Landing", R.reception.name, R.reception.text + (weekend ? " " + R.weekend.reception : ""), level.status, exits), { special: "ticket" })
-      : room("landing", "Landing", "Landing, B" + d, sub(rPick(r, band.landing)), level.status, exits);
+      : room("landing", "Landing", "Landing, B" + d, [sub(rPick(r, band.landing)), ...postedHere.filter(x => x.landing).map(x => x.landing)].join(" "), level.status, exits);
   }
 
   if (!m[3] && !m[4]) {
@@ -1180,7 +1181,7 @@ function roomAt(id, R, seed, open, weekend) {
     const exits = [corridorLink(lv.corridors[f.at])];
     if (f.exit) exits[0].label = f.exit;
     if (f.through) exits.push(corridorLink(lv.corridors[(f.at + 1) % lv.corridors.length]));
-    return Object.assign(room("fixed", f.through ? "Passage" : "Office", f.name, f.text, f.notice, exits), { special: f.special || "" });
+    return Object.assign(room("fixed", f.through ? "Passage" : "Office", f.name, f.text, f.notice, exits), { special: f.special || "", letters: f.letters || [] });
   }
 
   if (m[3]) {
@@ -1211,8 +1212,13 @@ function roomAt(id, R, seed, open, weekend) {
       [exits[j], exits[s]] = [exits[s], exits[j]];
     }
     if (c.loop) exits.push({ label: R.loopExit, to: id });
-    return room("corridor", "Corridor " + n, c.loop ? sub(R.loopName) : "Corridor " + n,
-      sub(rPick(r, band.corridor)), sub(rPick(r, plain() ? (weekend ? R.weekend.notices : R.mundane.notices) : band.corridorNotice)), exits);
+    /* The notice is drawn either way, so that a posted line moves nothing
+       else this corridor draws. */
+    const text = sub(rPick(r, band.corridor));
+    const notice = sub(rPick(r, plain() ? (weekend ? R.weekend.notices : R.mundane.notices) : band.corridorNotice));
+    const posted = postedHere.find(x => x.at === i && x.notice);
+    return Object.assign(room("corridor", "Corridor " + n, c.loop ? sub(R.loopName) : "Corridor " + n, text, posted ? posted.notice : notice, exits),
+      posted ? { posted: posted.on || "letterhead", ref: "RR-B" + d + "/" + n } : {});
   }
 
   const n = Number(m[4]);
@@ -1286,11 +1292,33 @@ function renderRoom(room, extra) {
     + "</section>";
   let k = 1;
   if (extra) html += '<section class="field section">' + head(k++, extra.label, extra.readout) + extra.html + "</section>";
+  for (const l of room.letters || []) {
+    html += '<section class="field section">' + head(k++, "Correspondence", "Opened")
+      + '<p class="letter-meta">From: ' + e(l.from) + "<br>Re: " + e(l.re) + "</p>"
+      + l.body.map(p => '<p class="blurb">' + e(p) + "</p>").join("")
+      + '<p class="blurb letter-sign">' + e(l.sign) + "</p>"
+      + (l.enclosure ? '<figure class="enclosure"><a href="' + e(l.enclosure.src) + '"><img src="' + e(l.enclosure.src) + '" alt="' + e(l.enclosure.alt)
+        + '" width="1200" height="900"></a><figcaption>' + e(l.enclosure.caption) + "</figcaption></figure>" : "")
+      + "</section>";
+  }
   /* The Long Corridor is long: the notice is posted halfway along it. */
   const long = room.special === "long" ? '<div class="long" aria-hidden="true"></div>' : "";
   /* ...and halfway along it, a red line across the floor and both walls. */
   html += long + (long ? '<div class="red-line" aria-hidden="true"></div>' : "");
-  if (room.notice) {
+  /* Post from the partner sites goes up on the Office's own letterhead,
+     copied for the notice board; what staff wrote themselves, on whatever
+     was to hand. Pinned slightly askew, and differently on every level. */
+  if (room.posted === "letterhead") {
+    html += '<section class="field section">' + head(k++, "Notice", "Posted as received")
+      + '<div class="lh" style="--tilt:' + [-.6, .4, -.3, .7, -.8][(room.d + room.no) % 5] + 'deg">'
+      + '<div class="lh-head"><span class="lh-mark">Sprint<br>Designation <em>Office</em></span>'
+      + '<span class="lh-ref">Records and Retention<br>Ref. ' + e(room.ref) + "<br>Copy for the notice board</span></div>"
+      + '<p class="lh-body">' + e(room.notice) + "</p>"
+      + '<p class="lh-foot">Received from a partner site &#183; Filed as received &#183; Not to be removed</p></div></section>';
+  } else if (room.posted === "postit") {
+    html += '<section class="field section">' + head(k++, "Notice", "Stuck on")
+      + '<div class="postit" style="--tilt:' + [-2.2, 1.4, -1.1, 2.6, -1.7][(room.d + room.no) % 5] + 'deg"><p>' + e(room.notice) + "</p></div></section>";
+  } else if (room.notice) {
     html += '<section class="field section">' + head(k++, "Notice", "Posted")
       + '<p class="blurb">' + e(room.notice) + "</p></section>";
   }
@@ -1377,6 +1405,33 @@ function renderRoom(room, extra) {
   RECORDS.fixed.meadow.replies.forEach((t, i) => text(t, "fixed.meadow.replies[" + i + "]"));
   for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
   for (const t of ["issued", "from", "reads", "uses", "display", "battery"]) text((RECORDS.fixed.badge.labels || {})[t], "fixed.badge.labels." + t);
+  for (const [k, f] of Object.entries(RECORDS.fixed)) {
+    (f.letters || []).forEach((l, i) => {
+      const where = "fixed." + k + ".letters[" + i + "]";
+      for (const t of ["from", "re", "sign"]) text(l[t], where + "." + t);
+      list(l.body, where + ".body");
+      l.body.forEach((p, j) => text(p, where + ".body[" + j + "]"));
+      if (l.enclosure) for (const t of ["src", "alt", "caption"]) text(l.enclosure[t], where + ".enclosure." + t);
+    });
+  }
+
+  /* The other facilities: one line to a corridor or a stairwell, or one
+     of them would never be read. */
+  list(RECORDS.facilities, "facilities");
+  const postedAt = new Set();
+  RECORDS.facilities.forEach((x, i) => {
+    const where = "facilities[" + i + "]";
+    if (!Number.isInteger(x.d) || x.d < 1 || x.d > RECORDS.levels.length) fail(where + ".d is not a level");
+    if (x.on !== undefined && (x.on !== "postit" || x.landing !== undefined)) fail(where + ".on is \"postit\" or left out, and never on a landing");
+    if (x.landing !== undefined) text(x.landing, where + ".landing");
+    else {
+      if (!Number.isInteger(x.at) || x.at < 0 || x.at > 3) fail(where + ".at must be 0-3");
+      text(x.notice, where + ".notice");
+    }
+    const key = "B" + x.d + (x.landing !== undefined ? " landing" : " corridor " + x.at);
+    if (postedAt.has(key)) fail(where + " is a second line on " + key);
+    postedAt.add(key);
+  });
 
   /* The page script reads these two by name. */
   if (!RECORDS.fixed.personnel) fail("fixed.personnel is missing; the page script fills it in");
@@ -1431,6 +1486,12 @@ function renderRoom(room, extra) {
   for (const [k, f] of Object.entries(RECORDS.fixed)) {
     if (f.d <= RECORDS_OPEN && !rooms.has("b" + f.d + "/" + k)) throw new Error(
       "build: fixed room " + k + " on B" + f.d + " cannot be reached. Check its `at`.");
+  }
+  for (const x of RECORDS.facilities) {
+    if (x.d > RECORDS_OPEN || x.landing !== undefined) continue;
+    const id = "b" + x.d + "/corridor-" + rLevel(x.d, RECORDS_SEED).corridors[x.at].n;
+    if (!rooms.has(id) || rooms.get(id).notice !== x.notice) throw new Error(
+      "build: the facilities line for B" + x.d + " corridor " + x.at + " is not posted at " + id + ".");
   }
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
@@ -1516,6 +1577,100 @@ const TORN = (() => {
 const RECORDS_CSS = `
 /* ---------- Records and Retention only ---------- */
 .exits{margin-top:4px}
+/* Post from the partner sites: a letterhead, then the letter. */
+.letter-meta{
+  margin:0 0 14px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.7rem;
+  line-height:1.7;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.letter-sign{font-style:italic}
+/* A photograph, clipped to the letter it came with. */
+.enclosure{max-width:520px;margin:22px 0 4px}
+.enclosure a{display:block;padding:8px 8px 0;background:color-mix(in oklab, var(--paper), #FFFFFF 55%);border:1px solid var(--rule);box-shadow:0 14px 24px -18px rgba(0,0,0,.45);transform:rotate(.6deg)}
+.enclosure img{display:block;width:100%;height:auto;filter:saturate(.85)}
+.enclosure figcaption{
+  margin-top:12px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.62rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .enclosure a{background:color-mix(in oklab, var(--paper), #FFFFFF 7%)}
+}
+:root[data-theme="dark"] .enclosure a{background:color-mix(in oklab, var(--paper), #FFFFFF 7%)}
+/* The Office's letterhead, as pinned to a corridor wall: the wordmark,
+   a reference, the notice, and a foot nobody reads. The pin is drawn. */
+.lh{
+  position:relative;
+  max-width:520px;
+  margin:10px 0 4px;
+  padding:26px 26px 18px;
+  background:color-mix(in oklab, var(--paper), #FFFFFF 55%);
+  border:1px solid var(--rule);
+  box-shadow:0 1px 0 var(--rule-soft), 0 14px 24px -18px rgba(0,0,0,.45);
+  transform:rotate(var(--tilt,0deg));
+}
+.lh::before{
+  content:"";
+  position:absolute;
+  top:-6px;left:50%;
+  width:12px;height:12px;
+  margin-left:-6px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #E06A5A, #9C2A1E 70%);
+  box-shadow:0 2px 3px rgba(0,0,0,.35);
+}
+.lh-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+  padding-bottom:10px;
+  border-bottom:2px solid var(--ink);
+}
+.lh-mark{
+  font-family:"Archivo Black","Arial Black",sans-serif;
+  font-size:.95rem;
+  line-height:.94;
+  letter-spacing:-.02em;
+}
+.lh-mark em{font-style:normal;color:var(--accent)}
+.lh-ref,.lh-foot{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.58rem;
+  line-height:1.7;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-2);
+}
+.lh-ref{text-align:right}
+.lh-body{margin:18px 0 22px;font-size:1rem;line-height:1.6;text-wrap:pretty}
+.lh-foot{margin:0;padding-top:8px;border-top:1px solid var(--rule-soft);color:var(--ink-3)}
+/* ...and what staff wrote themselves. Ballpoint on a sticky note: no
+   handwriting face ships, so the hand is the pen's colour and the slant. */
+.postit{
+  position:relative;
+  width:min(250px,100%);
+  margin:12px 0 6px;
+  padding:26px 20px 30px;
+  background:linear-gradient(#F4E27A, #EFD95E);
+  color:#24306E;
+  box-shadow:0 18px 16px -14px rgba(0,0,0,.4), inset 0 18px 0 -2px rgba(0,0,0,.025);
+  transform:rotate(var(--tilt,0deg));
+}
+.postit p{margin:0;font-style:italic;font-size:1.02rem;line-height:1.45;letter-spacing:.005em;text-wrap:pretty}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .lh{background:color-mix(in oklab, var(--paper), #FFFFFF 7%)}
+  :root:not([data-theme="light"]) .postit{background:linear-gradient(#CDBB55, #C3AF48);color:#1B2352}
+}
+:root[data-theme="dark"] .lh{background:color-mix(in oklab, var(--paper), #FFFFFF 7%)}
+:root[data-theme="dark"] .postit{background:linear-gradient(#CDBB55, #C3AF48);color:#1B2352}
 .exit-shut{
   display:inline-flex;
   align-items:center;
@@ -2465,6 +2620,13 @@ const files = [
   { ...page(RECORDS_URL, recordsPage), unlisted: true },
   ...GENRES.map(g => page(genreUrl(g), genrePage(g))),
   { key: "og.png", body: fs.readFileSync(path.join(__dirname, "og.png")), contentType: "image/png", cacheControl: LONG },
+  /* The photograph enclosed with a letter on B11 - see RECORDS.fixed. */
+  ...fs.readdirSync(path.join(__dirname, "images")).filter(f => f.endsWith(".jpg")).map(f => ({
+    key: "images/" + f,
+    body: fs.readFileSync(path.join(__dirname, "images", f)),
+    contentType: "image/jpeg",
+    cacheControl: LONG
+  })),
   ...FONTS.map(f => ({
     key: "fonts/" + f,
     body: fs.readFileSync(path.join(__dirname, "fonts", f)),
@@ -2488,6 +2650,12 @@ const files = [
     if (!d.absent && !held) throw new Error(
       "build: the documents index links " + d.code + " at " + d.url
       + ", which this build does not emit. Add the page, fix the link, or flag it `absent`.");
+  }
+  /* The same for a photograph enclosed with a letter in the basement: a
+     broken image there would read as the anomaly, and nobody would report it. */
+  for (const f of Object.values(RECORDS.fixed)) for (const l of f.letters || []) {
+    if (l.enclosure && !emitted.has(l.enclosure.src)) throw new Error(
+      "build: a letter on B" + f.d + " encloses " + l.enclosure.src + ", which this build does not emit. Put it in images/.");
   }
 }
 
