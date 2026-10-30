@@ -14,3 +14,9 @@ infra/.build/
 infra/*.tfstate
 infra/*.tfstate.*
 infra/*.tfvars
+terraform.tfvars
+
+# Local working files, kept out of the repo.
+CLAUDE.md
+IDEAS.md
+meadow.html

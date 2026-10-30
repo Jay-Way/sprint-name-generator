@@ -428,7 +428,7 @@ Two rooms with something impossible about them, recorded flatly:
 
 | Room | Where | What it does |
 |---|---|---|
-| Office with a Window | `#/b10/window` | A window on B10 showing the sky as it is outside now, by the visitor's clock: night, dawn, day or dusk. The one room that changes with the time of day, by decision |
+| Office with a Window | `#/b10/window` | A full scene, like the meadow (`WINDOW_SCENE` in `build.js`, from the scene Jannik supplied): a bare office, the window, the safety notice beside it (a click reads it in full). The sky is the sky outside now, by the visitor's clock: night, dawn, day or dusk - the one room that changes with the time of day, by decision. Looking out (hover, a held finger, focus) draws the room in; thoughts by sky at 2 and 5 seconds, then the reminder, the insurance, and once the 15 seconds per hour are spent, the allowance. The seconds are kept under `sng.window.v1` and shown in the personnel file on B8; shredded with the minutes. The handle is drawn on the far side of the glass |
 | Storage (External) | `#/b12/meadow` | An almost empty office with the door open on a meadow. No form, no masthead: a path through the grass to a desk with a telephone, one line, the notice, and the way back. Pure markup and CSS (`MEADOW_SCENE` in `build.js`, from the scene Jannik supplied). The telephone is a button: each attempt gets the next line of `fixed.meadow.replies`, and the light blinks faster |
 
 Special rooms are exempt from the per-room flaws, which would otherwise fade
@@ -512,6 +512,40 @@ itself final (*Rev. 4, Final*).
 - **A + B:** *Now serving: 9 703 998. Klaus, please.*
 - *Your replacement has been requested.*, the review's line, is retired if A
   is chosen: Klaus has no replacement, which is the point.
+
+## The other facilities (later, 30 Oct 2026)
+
+The owner's idea: the Office is not the only institution underground, and
+the others know of each other - Aperture, Black Mesa, the Federal Bureau of
+Control in the Oldest House, the SCP Foundation. Not built yet; written down
+so it is not lost.
+
+Rules, if it is built:
+
+- **Never a name.** Only things a reader recognises: a place, a phrase, an
+  object class. Subtler, and it keeps trademarks (Valve, Remedy) off the
+  site. "Aperture Regulation" on the B10 notice was cut for this reason; it
+  now reads *Protocol 409-B · Internal Regulation*.
+- **At most one per level**, spread across the bands, in the mundane pool or
+  on notices. Never explained.
+- **Read `IDEAS.md` first.** Nothing here may collide with the hints the
+  escalation puzzle depends on.
+
+Candidates (drafts, none signed off):
+
+- Aperture: *Transfer requests to the testing facility in Upper Michigan are
+  no longer being processed.*
+- Black Mesa: *Anomalous materials are not stored on this level. Please
+  redirect deliveries to New Mexico.*
+- The Oldest House: *The building is larger on the inside. This has been
+  reported to Facilities, who are aware.* Or: *The janitor is not to be asked
+  where he is from.*
+- SCP: a lost-property label, *Object class: Safe.* Or the Office's own
+  motto: *Records are to be secured, contained and protected.*
+- The thread that ties them: a circular on a landing, *Circular from the
+  Joint Committee on Subterranean Facilities: glazing standards are now
+  shared between partner sites (4).* It would explain Protocol 409-B on the
+  B10 window after the fact, without anyone saying so there.
 
 ## Open questions
 
