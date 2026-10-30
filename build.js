@@ -1260,11 +1260,11 @@ function renderRoom(room, extra) {
     return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
   }
   /* Through the door marked Storage (External): no form at all. The scene
-     itself is MEADOW_SVG, put in place by the page script. */
+     itself is MEADOW_SCENE, put in place by the page script. */
   if (room.special === "meadow") {
-    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow" aria-hidden="true"></div>'
+    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow"></div>'
       + (room.notice ? '<p class="meadow-notice">' + room.notice + "</p>" : "")
-      + '<div class="meadow-caption"><p>' + room.text + '</p><nav class="exits meadow-exit" aria-label="Exits">'
+      + '<div class="meadow-caption"><p>' + room.text + '</p><p class="meadow-reply" id="meadow-reply" aria-live="polite"></p><nav class="exits meadow-exit" aria-label="Exits">'
       + room.exits.map(x => '<a href="#/' + x.to + '">' + x.label + "</a>").join("") + "</nav></div>";
   }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1354,6 +1354,8 @@ function renderRoom(room, extra) {
     if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
     for (const t of SPECIAL_ROOMS[f.special]) text(f[t], "fixed." + k + "." + t);
   }
+  if (!Array.isArray(RECORDS.fixed.meadow.replies)) fail("fixed.meadow.replies must be a list");
+  RECORDS.fixed.meadow.replies.forEach((t, i) => text(t, "fixed.meadow.replies[" + i + "]"));
   for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
   for (const t of ["issued", "from", "reads", "uses", "display", "battery"]) text((RECORDS.fixed.badge.labels || {})[t], "fixed.badge.labels." + t);
 
@@ -1414,28 +1416,37 @@ function renderRoom(room, extra) {
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
 
-/* The meadow. Drawn rather than photographed so it ships in the page;
-   if a painted one replaces it, it replaces this string and nothing else.
-   Overexposed on purpose - a memory of a field, not a field. */
-const MEADOW_SVG = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="presentation">
-<defs>
-<linearGradient id="m-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9EC7EE"/><stop offset=".55" stop-color="#E2EBF8"/><stop offset=".7" stop-color="#FBF1E6"/></linearGradient>
-<radialGradient id="m-sun"><stop offset="0" stop-color="#FFFDF4"/><stop offset=".35" stop-color="#FFFDF4" stop-opacity=".7"/><stop offset="1" stop-color="#FFFDF4" stop-opacity="0"/></radialGradient>
-<linearGradient id="m-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CDE9A4"/><stop offset="1" stop-color="#86C463"/></linearGradient>
-<linearGradient id="m-haze" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".7" stop-color="#FFFFFF" stop-opacity=".6"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
-<filter id="m-soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
-</defs>
-<rect width="1600" height="900" fill="url(#m-sky)"/>
-<circle cx="1020" cy="290" r="320" fill="url(#m-sun)"/>
-<g class="m-clouds" filter="url(#m-soft)" fill="#FFFFFF" opacity=".85"><ellipse cx="300" cy="200" rx="190" ry="40"/><ellipse cx="430" cy="178" rx="120" ry="34"/><ellipse cx="960" cy="140" rx="220" ry="38"/><ellipse cx="1420" cy="232" rx="160" ry="30"/></g>
-<path d="M0 622 C 300 592 520 602 800 612 S 1300 596 1600 606 L1600 900 L0 900Z" fill="#D9ECC4"/>
-<path d="M0 662 C 400 642 900 652 1600 642 L1600 900 L0 900Z" fill="url(#m-grass)"/>
-<rect width="1600" height="900" fill="url(#m-haze)"/>
-<g transform="translate(915 566)"><rect width="30" height="66" fill="#3A3F48"/><rect x="-3" y="-3" width="36" height="72" fill="none" stroke="#F5F1E8" stroke-width="4"/></g>
-<ellipse cx="690" cy="668" rx="84" ry="8" fill="#6FA650" opacity=".45"/>
-<g transform="translate(690 664)" fill="#5E6672"><rect x="-72" y="-58" width="144" height="8" rx="2"/><rect x="-66" y="-50" width="7" height="50"/><rect x="59" y="-50" width="7" height="50"/><rect x="18" y="-50" width="41" height="30"/><rect x="34" y="-38" width="10" height="3" fill="#7A828E"/>
-<g transform="translate(-34 -58)"><rect x="-4" y="-17" width="40" height="17" rx="4" fill="#3B4049"/><rect x="-8" y="-24" width="48" height="8" rx="4" fill="#3B4049"/><g class="m-light"><circle cx="28" cy="-8" r="10" fill="#FF3B30" opacity=".22"/><circle cx="28" cy="-8" r="3.6" fill="#FF3B30"/></g></g></g>
-</svg>`;
+/* The meadow, as the Office's own painter left it: an almost empty room,
+   an open door, and the field beyond. Pure markup and CSS, so it ships
+   in the page. The grass is planted here at build time rather than by the
+   page script, so the meadow is the same field on every visit. */
+const MEADOW_SCENE = (() => {
+  const blade = (left, h, delay) => '<i class="m-blade" style="left:' + left + "%;height:" + h + "px;animation-delay:" + delay + 's"></i>';
+  const desk = [[8, 24, .1], [12, 31, .4], [16, 22, .8], [21, 28, .2], [26, 19, 1.1], [34, 25, .5],
+    [64, 23, .7], [71, 29, .3], [76, 33, .9], [81, 26, .2], [86, 30, 1.3], [91, 21, .6]].map(b => blade(...b)).join("");
+  let front = "";
+  /* The path to the desk is left clear. */
+  for (let i = 0; i < 24; i++) {
+    const pct = i / 24 * 100;
+    if (pct > 30 && pct < 68) continue;
+    front += blade(+pct.toFixed(2), 18 + (i % 5) * 6, +(i * .23).toFixed(2));
+  }
+  let spores = "";
+  for (let i = 0; i < 12; i++) {
+    const s = 2 + i % 3;
+    spores += '<i class="m-spore" style="width:' + s + "px;height:" + s + "px;left:" + (12 + i * 7 % 76) + "%;bottom:" + (15 + i * 11 % 45)
+      + "%;animation-delay:" + (i * .6).toFixed(1) + 's"></i>';
+  }
+  return '<div class="m-stage"><div class="m-lamp"></div><div class="m-wall"></div><div class="m-outlet"></div><div class="m-baseboard"></div>'
+    + '<div class="m-bin-rim"></div><div class="m-bin"></div><div class="m-paper"></div><div class="m-floor"></div><div class="m-spill"></div>'
+    + '<div class="m-door"><div class="m-leaf"><div class="m-handle"></div></div><div class="m-portal">'
+    + '<div class="m-sun"></div><div class="m-cloud m-cloud-1"></div><div class="m-cloud m-cloud-2"></div>'
+    + '<div class="m-hill-far"></div><div class="m-hill-mid"></div><div class="m-ground"></div><div class="m-path"></div>'
+    + '<div class="m-desk"><div class="m-chair"></div><div class="m-top"></div><div class="m-body"><div class="m-drawer"></div></div><div class="m-leg-l"></div><div class="m-leg-r"></div>'
+    + '<button type="button" class="m-phone" id="m-phone" aria-label="The telephone"><span class="m-base"></span><span class="m-handset"></span><span class="m-light"></span></button>'
+    + '<div class="m-desk-grass">' + desk + "</div></div>"
+    + '<div class="m-front-grass">' + front + '</div><div class="m-spores">' + spores + "</div></div></div></div>";
+})();
 
 /* The torn foot of a form older than the Office: a fixed ragged edge, the
    same on every page, because it is the same sheet. */
@@ -1529,56 +1540,123 @@ const RECORDS_CSS = `
 .window[data-sky="night"]{background:radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 62% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 52%, #fff, transparent), radial-gradient(1px 1px at 38% 66%, #fff, transparent), radial-gradient(1px 1px at 12% 74%, #fff, transparent), linear-gradient(#070B1E, #1C2347)}
 
 /* Storage (External). The form is not here: no sheet, no masthead, no
-   footer, only the field and the way back. Stays bright in dark mode -
-   it is not part of the building's lighting. */
-:root[data-scene="meadow"] body{background:#CFE3F5;padding:0;animation:none}
+   footer, only an empty room, the open door, and the way back. The room
+   keeps its own lighting in either colour scheme - it is not part of the
+   building's. */
+:root[data-scene="meadow"] body{background:#0f131d;padding:0;animation:none}
 :root[data-scene="meadow"] .sheet{background:transparent;border:0;box-shadow:none !important;clip-path:none;max-width:none}
 :root[data-scene="meadow"] .masthead,:root[data-scene="meadow"] .fineprint{display:none}
-.meadow{position:fixed;inset:0;z-index:0}
-.meadow svg{display:block;width:100%;height:100%;filter:saturate(1.12) brightness(1.04)}
-.m-clouds{animation:drift 90s ease-in-out infinite alternate}
-@keyframes drift{to{transform:translateX(-70px)}}
-/* Up in the empty sky, so the desk stays in view below it. */
+.meadow{position:fixed;inset:0;z-index:0;overflow:hidden;background:#0f131d;user-select:none}
+/* Drawn at a fixed size and scaled to the window by the page script, so
+   the door is the same door on a phone and on a wall-sized screen. */
+.m-stage{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
+.m-stage div,.m-stage i,.m-stage span{position:absolute;display:block}
+.m-wall{inset:0 0 28% 0;z-index:5;background:radial-gradient(circle at 50% 62%, rgba(255,224,150,.25) 0%, rgba(26,31,44,.92) 56%, #0f131d 90%), repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 48px)}
+.m-baseboard{bottom:28%;left:0;right:0;height:14px;z-index:6;background:linear-gradient(90deg, #0d1017 0%, #242938 35%, #242938 65%, #0d1017 100%);border-top:1px solid rgba(255,255,255,.07);border-bottom:2px solid #080a0f}
+.m-floor{inset:72% 0 0 0;z-index:5;overflow:hidden;background:linear-gradient(180deg, #0e1118 0%, #161b26 35%, #0b0d13 100%)}
+.m-floor::before{content:"";position:absolute;inset:0;background-image:linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,.025) 1px, transparent 1px);background-size:64px 36px;transform:perspective(300px) rotateX(65deg) scale(1.8);transform-origin:top center}
+/* The light from the doorway, on the office floor. */
+.m-spill{top:72%;left:50%;width:380px;height:220px;z-index:7;transform:translateX(-50%);background:linear-gradient(180deg, rgba(253,230,138,.38) 0%, rgba(167,243,208,.14) 55%, transparent 100%);clip-path:polygon(22% 0, 78% 0, 100% 100%, 0 100%);filter:blur(8px);pointer-events:none;animation:m-breath 6s ease-in-out infinite alternate}
+@keyframes m-breath{from{opacity:.82}to{opacity:1}}
+.m-outlet{bottom:31.5%;left:23%;width:16px;height:24px;z-index:6;background:#1f2433;border:1px solid rgba(255,255,255,.08);border-radius:2px;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+.m-outlet::before,.m-outlet::after{content:"";position:absolute;left:4px;width:6px;height:4px;background:#0d1017;border-radius:1px}
+.m-outlet::before{top:5px}
+.m-outlet::after{bottom:5px}
+.m-bin{bottom:18%;right:17%;width:44px;height:56px;z-index:8;background:linear-gradient(135deg, #1e2536 0%, #0f131c 100%);clip-path:polygon(0 0, 100% 0, 84% 100%, 16% 100%)}
+.m-bin-rim{bottom:calc(18% + 53px);right:calc(17% - 2px);width:48px;height:7px;z-index:8;background:#2b3348;border-radius:50%}
+.m-paper{bottom:13%;left:26%;width:34px;height:22px;z-index:8;background:#94a3b8;opacity:.45;transform:rotate(-18deg) skewX(24deg);box-shadow:0 3px 8px rgba(0,0,0,.6)}
+/* The ceiling tube, which is mostly off. */
+.m-lamp{top:18px;left:50%;width:240px;height:10px;z-index:8;transform:translateX(-50%);background:#1e2330;border:1px solid rgba(255,255,255,.06);border-radius:4px}
+.m-lamp::after{content:"";position:absolute;inset:2px 10px;background:rgba(203,213,225,.15);border-radius:2px;animation:m-flicker 9s infinite}
+@keyframes m-flicker{0%,92%,96%,100%{opacity:.25}94%,98%{opacity:.7;box-shadow:0 0 15px rgba(186,230,253,.4)}}
+.m-door{bottom:28%;left:50%;width:220px;height:325px;z-index:10;transform:translateX(-50%);box-sizing:border-box;padding:10px 10px 0;background:#272d3d;border-radius:6px 6px 0 0;box-shadow:0 -8px 40px rgba(253,224,71,.18), 0 0 0 2px #131722, inset 0 2px 4px rgba(255,255,255,.1)}
+.m-leaf{top:8px;left:-82px;width:86px;height:325px;z-index:15;transform:skewY(-11deg);transform-origin:right center;background:linear-gradient(90deg, #3b281e 0%, #5c3d2e 75%, #462e22 100%);border:1px solid #291a12;border-radius:3px 0 0 3px;box-shadow:-18px 18px 28px rgba(0,0,0,.75), inset 3px 0 8px rgba(253,224,71,.22)}
+.m-leaf::before,.m-leaf::after{content:"";position:absolute;left:14px;right:14px;border:2px solid rgba(28,17,10,.55);background:rgba(0,0,0,.08)}
+.m-leaf::before{top:22px;height:115px}
+.m-leaf::after{bottom:26px;height:135px}
+.m-handle{top:52%;left:12px;width:16px;height:7px;z-index:16;background:linear-gradient(180deg, #fef08a, #ca8a04);border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.m-stage .m-portal{position:relative;width:100%;height:100%;overflow:hidden;border-radius:2px 2px 0 0;background:linear-gradient(180deg, #a5f3fc 0%, #fde68a 42%, #fbcfe8 60%, #86efac 62%, #22c55e 82%, #15803d 100%);box-shadow:inset 0 0 28px rgba(254,240,138,.45)}
+.m-sun{top:34px;left:50%;width:68px;height:68px;border-radius:50%;background:radial-gradient(circle, #fff 15%, #fef08a 60%, rgba(253,224,71,0) 100%);filter:blur(1px);transform:translateX(-50%);animation:m-sun 5s ease-in-out infinite alternate}
+@keyframes m-sun{from{transform:translateX(-50%) scale(.95);opacity:.9}to{transform:translateX(-50%) scale(1.08);opacity:1}}
+.m-cloud{background:rgba(255,255,255,.78);border-radius:999px;filter:blur(1px)}
+.m-cloud-1{top:46px;left:-20px;width:64px;height:16px;animation:m-cloud 22s linear infinite}
+.m-cloud-2{top:78px;left:-40px;width:48px;height:12px;opacity:.65;animation:m-cloud 29s linear 6s infinite}
+@keyframes m-cloud{to{transform:translateX(270px)}}
+.m-hill-far{top:52%;left:-25%;width:150%;height:90px;opacity:.85;border-radius:50%;background:linear-gradient(180deg, #6ee7b7 0%, #34d399 100%)}
+.m-hill-mid{top:56%;right:-30%;width:150%;height:110px;border-radius:50%;background:linear-gradient(180deg, #4ade80 0%, #16a34a 100%)}
+.m-ground{top:60%;left:0;right:0;bottom:0;background:linear-gradient(180deg, #4ade80 0%, #16a34a 55%, #14532d 100%)}
+.m-path{bottom:0;left:50%;width:130px;height:118px;opacity:.9;transform:translateX(-50%);background:linear-gradient(180deg, #fde68a 0%, #d97706 45%, #b45309 100%);clip-path:polygon(43% 14%, 57% 14%, 86% 100%, 14% 100%);filter:drop-shadow(0 0 6px rgba(251,191,36,.3))}
+.m-path::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 3px, transparent 3px 11px)}
+.m-desk{bottom:62px;left:50%;width:96px;height:64px;z-index:12;transform:translateX(-50%)}
+.m-chair{bottom:24px;left:50%;width:26px;height:30px;z-index:1;transform:translateX(-50%);box-sizing:border-box;background:#1e293b;border:1px solid #334155;border-radius:6px 6px 2px 2px}
+.m-top{bottom:22px;left:4px;right:4px;height:10px;z-index:3;background:linear-gradient(90deg, #78350f, #b45309, #92400e);border-top:2px solid #fcd34d;border-radius:2px;box-shadow:0 4px 10px rgba(0,0,0,.45)}
+.m-body{bottom:5px;left:10px;right:10px;height:18px;z-index:2;background:#451a03;border-left:4px solid #78350f;border-right:4px solid #78350f}
+.m-drawer{top:2px;right:2px;width:22px;height:14px;background:#5c2406;border:1px solid #290f02}
+.m-leg-l,.m-leg-r{bottom:-2px;width:4px;height:24px;z-index:2;background:#290f02}
+.m-leg-l{left:9px}
+.m-leg-r{right:9px}
+/* The telephone. It is a button, because people will try; the notice
+   asks them not to. The hit area is wider than the telephone. */
+.m-phone{position:absolute;bottom:31px;left:52%;width:24px;height:14px;z-index:6;padding:0;border:0;background:none;transform:translateX(-50%);cursor:pointer}
+.m-phone::before{content:"";position:absolute;inset:-12px -10px}
+.m-phone:focus-visible{outline:2px solid #fef08a;outline-offset:6px}
+.m-base{bottom:0;left:2px;width:20px;height:8px;background:linear-gradient(180deg, #334155 0%, #0f172a 100%);border-top:1px solid #64748b;border-radius:3px 3px 1px 1px;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.m-handset{bottom:6px;left:0;width:24px;height:5px;background:#1e293b;border-top:1px solid #475569;border-radius:4px;animation:m-shake 4s ease-in-out infinite}
+@keyframes m-shake{0%,82%,100%{transform:rotate(0) translateY(0)}84%,88%,92%,96%{transform:rotate(-4deg) translateY(-1.5px)}86%,90%,94%,98%{transform:rotate(4deg) translateY(-1.5px)}}
+.m-light{bottom:4px;right:4px;width:6px;height:6px;z-index:10;border-radius:50%;background:#ef4444;animation:m-blink var(--blink, 1.1s) ease-in-out infinite}
+.m-light::after{content:"";position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle, rgba(239,68,68,.9) 0%, rgba(239,68,68,0) 70%);animation:m-halo var(--blink, 1.1s) ease-in-out infinite}
+@keyframes m-blink{0%,100%{background:#ff2a2a;box-shadow:0 0 8px 3px #ef4444, 0 0 18px 6px rgba(239,68,68,.85);transform:scale(1.18)}50%{background:#450a0a;box-shadow:none;transform:scale(.88)}}
+@keyframes m-halo{0%,100%{transform:scale(1.4);opacity:1}50%{transform:scale(.5);opacity:0}}
+.m-desk-grass{left:-35px;right:-35px;bottom:-4px;height:40px;pointer-events:none}
+.m-front-grass{left:0;right:0;bottom:0;height:56px;z-index:20;pointer-events:none}
+.m-blade{bottom:0;width:4px;z-index:8;background:linear-gradient(180deg, #bbf7d0 0%, #15803d 100%);border-radius:100% 0 0 0;transform-origin:bottom center;animation:m-sway 3.2s ease-in-out infinite alternate}
+@keyframes m-sway{from{transform:rotate(-9deg)}to{transform:rotate(11deg)}}
+.m-spores{inset:0;pointer-events:none}
+.m-spore{border-radius:50%;background:#fef08a;box-shadow:0 0 8px #fde047;opacity:0;animation:m-float 7s ease-in-out infinite}
+@keyframes m-float{0%{transform:translate(0, 0) scale(.6);opacity:0}40%{opacity:.95}100%{transform:translate(14px, -110px) scale(1.1);opacity:0}}
+/* Up on the wall above the door, so nothing in the field is covered. */
 .meadow-caption{
-  position:fixed;left:0;right:0;top:max(9vh, 48px);z-index:1;
+  position:fixed;left:0;right:0;top:max(6vh, 32px);z-index:1;
   max-width:60ch;
   margin:0 auto;
   padding:0 16px;
   text-align:center;
   font-size:.95rem;
   line-height:1.55;
-  color:#46525E;
+  color:#AEB6C4;
 }
-/* The containment notice, small, on a sign at the edge of the field. */
+/* The containment notice, small, on a sign by the skirting board. */
 .meadow-notice{
   position:fixed;bottom:16px;left:16px;z-index:1;
   max-width:280px;
   margin:0;
   padding:8px 10px;
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(70,82,94,.3);
+  background:rgba(15,19,29,.85);
+  border:1px solid rgba(174,182,196,.25);
   font-family:"IBM Plex Mono",ui-monospace,monospace;
   font-size:.6rem;
   line-height:1.55;
   letter-spacing:.08em;
   text-transform:uppercase;
-  color:#46525E;
+  color:#AEB6C4;
 }
-/* The telephone. You cannot hear it. */
-.m-light{animation:blink 1.4s steps(1) infinite}
-@keyframes blink{50%{opacity:.12}}
 .meadow-caption p{margin:0 0 14px}
+/* What happens when somebody tries anyway. */
+.meadow-caption .meadow-reply{min-height:1.55em;color:#E3A3A3;font-style:italic}
 .meadow-exit{display:flex;justify-content:center}
 .meadow-exit a{
   font-family:"IBM Plex Mono",ui-monospace,monospace;
   font-size:.7rem;
   letter-spacing:.12em;
   text-transform:uppercase;
-  color:#46525E;
+  color:#AEB6C4;
   text-decoration:underline;
   text-underline-offset:4px;
 }
-@media (prefers-reduced-motion:reduce){.m-clouds,.m-light{animation:none}}
+/* On a wide screen the way back is on the floor, opposite the notice,
+   where it cannot sit on the door frame. */
+@media (min-width:640px){.meadow-exit{position:fixed;right:16px;bottom:16px}}
+@media (prefers-reduced-motion:reduce){.m-stage *,.m-stage ::before,.m-stage ::after{animation:none !important}.m-spore{display:none !important}}
 
 /* The Long Corridor: the page is the length of it. */
 .long{height:140vh}
@@ -1764,7 +1842,7 @@ const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
 ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, rTicket, renderRoom].map(f => f.toString()).join("\n")}
-const MEADOW_SVG = ${JSON.stringify(MEADOW_SVG).replace(/</g, "\\u003c")};
+const MEADOW_SCENE = ${JSON.stringify(MEADOW_SCENE).replace(/</g, "\\u003c")};
 const PROCEDURE = ${JSON.stringify(PROCEDURE)};
 const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
 /* Dated in the Office's own hand, as on the form. */
@@ -1853,6 +1931,33 @@ const SPECIALS = {
 /* What a special does once it is on the page. Each returns a function that
    stops it, called when the visitor leaves the room. */
 const RUNNING = {
+  /* The room is drawn at a fixed size; fit it to the window with room
+     above the door for the line on the wall. Each attempt at the telephone
+     gets the next reply, and the light blinks a little faster. The last
+     reply is the one that stays. */
+  meadow() {
+    const meadow = document.querySelector(".meadow");
+    const stage = meadow.querySelector(".m-stage");
+    const reply = document.getElementById("meadow-reply");
+    const replies = RECORDS.fixed.meadow.replies;
+    const fit = () => {
+      const w = meadow.clientWidth, h = meadow.clientHeight;
+      const k = Math.min(w / 520, h / 700);
+      stage.style.width = w / k + "px";
+      stage.style.height = h / k + "px";
+      stage.style.transform = "scale(" + k + ")";
+    };
+    let tries = 0;
+    const answer = () => {
+      reply.textContent = replies[Math.min(tries, replies.length - 1)];
+      tries++;
+      stage.style.setProperty("--blink", Math.max(.35, 1.1 - tries * .12).toFixed(2) + "s");
+    };
+    fit();
+    addEventListener("resize", fit);
+    document.getElementById("m-phone").addEventListener("click", answer);
+    return () => removeEventListener("resize", fit);
+  },
   /* Only where the browser offers it (Chromium); elsewhere the line stays
      "Not disclosed", which is true. */
   badge() {
@@ -1953,7 +2058,7 @@ function personnelFile() {
     host.innerHTML = renderRoom(room, extra);
     if (room.special === "meadow") {
       root.dataset.scene = "meadow";
-      host.querySelector(".meadow").innerHTML = MEADOW_SVG;
+      host.querySelector(".meadow").innerHTML = MEADOW_SCENE;
     } else {
       delete root.dataset.scene;
     }

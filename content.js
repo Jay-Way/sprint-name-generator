@@ -538,7 +538,18 @@ const RECORDS = {
       name: "Storage (External)",
       text: "Beyond the door is a vast meadow beneath a cloudy sky. The grass moves gently in a breeze you cannot feel. Far away stands a desk, facing the doorway. There is a telephone on it. You cannot hear it ringing, but you can see the blinking red light of the telephone.",
       notice: "Do not enter. Do not try to answer the phone. Under no circumstances retrieve objects from the meadow.",
-      exit: "Return through the door"
+      exit: "Return through the door",
+      /* DRAFT - not signed off. One per attempt at the telephone, in order;
+         the last one stays. */
+      replies: [
+        "You reach for the telephone. It is still on the desk, a long way off across the grass.",
+        "The light goes on blinking. Your attempt to answer has been noted.",
+        "Second reminder: do not try to answer the phone.",
+        "For a moment the light goes out. Then it blinks again, a little faster.",
+        "The call is being held for you. It will be held for as long as it takes.",
+        "Somewhere across the meadow, a receiver is lifted. Nobody speaks.",
+        "The light goes on blinking."
+      ]
       },
     answers: {
       d: 11, at: 1,
