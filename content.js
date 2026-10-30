@@ -472,7 +472,8 @@ const RECORDS = {
       text: "A filing cabinet with one drawer, labelled with today’s date. It holds a single file. The file is yours.",
       notice: "The Office does not keep your minutes. Somebody down here does.",
       empty: "The file has been prepared. It is empty. It is not expecting to stay that way.",
-      summary: "File opened {date}. Designations on record: {n}."
+      summary: "File opened {date}. Designations on record: {n}.",
+      exposure: "Window exposure, B10: {total} in total, {hour} this hour. Allowance: 0:15 per hour."
     },
     /* The badge is printed from what the browser
        already tells every site it visits: time zone, language, system,
@@ -529,8 +530,42 @@ const RECORDS = {
     window: {
       d: 10, at: 2, special: "window",
       name: "Office with a Window",
+      /* Posted on the sign by the skirting board, where other rooms keep
+         their notice; the notice itself is the last of the rules. */
       text: "An office with a window. Beyond the glass, the sky. There is no visible ground, and the window is too high to see the horizon. There is a small brass handle on the frame, but it has been fitted on the other side.",
-      notice: "The window has been approved. Window must remain closed during working hours."
+      sign: {
+        location: "Current location",
+        level: "B10",
+        title: "Window Safety Notice",
+        more: "Read the full notice",
+        foot: "Sub-level 10 · 140 m",
+        kicker: "Sub-level",
+        heading: "Safety Instructions",
+        ref: "Protocol 409-B · Internal Regulation",
+        dept: "Dept. of Spatial Integrity",
+        ok: "Acknowledge",
+        rules: [
+          { lead: "Prolonged staring out of the window is discouraged.", rest: "Limit direct visual exposure to under 15 seconds per hour. Exposure is recorded." },
+          { lead: "Feelings of familiarity with the view have to be ignored.", rest: "You are 140 metres below ground level. You do not know this sky." },
+          { lead: "Window must remain closed at all times.", rest: "Do not attempt to unlatch, force or tamper with the seal. The handle is fitted on the other side and is not your concern." }
+        ]
+      },
+      /* What comes to mind while looking out, by the sky the visitor is
+         shown: the first line after 2 seconds, the second after 5. Then
+         the reminder (8), the insurance (11), and once the hour's
+         allowance is spent, the allowance (14). */
+      stare: {
+        allowance: 15,
+        thoughts: {
+          day: ["You know that cloud. You saw it once from the back seat of a car, a long time ago.", "It is warm out there. You remember this exact afternoon."],
+          dawn: ["You have seen the sky go pale like this before, after a night you did not sleep.", "Somewhere out there, a kitchen you used to know is putting the coffee on."],
+          dusk: ["This is the light from the last evening of a holiday.", "You cannot get rid of the feeling of familiarity with the view."],
+          night: ["You know these stars. You counted them once, lying in the grass.", "There was a window like this in the house you grew up in."]
+        },
+        reminder: "Feelings of familiarity with the view have to be ignored. You are 140 metres below ground level.",
+        insurance: "Episodes of cognitive dissonance are not covered by your workplace insurance.",
+        over: "Your viewing allowance for this hour has been used. Further exposure is at your own expense."
+      }
     },
     /* The form is not here. Only the line below and the way back. */
     meadow: {
@@ -538,7 +573,15 @@ const RECORDS = {
       name: "Storage (External)",
       text: "Beyond the door is a vast meadow beneath a cloudy sky. The grass moves gently in a breeze you cannot feel. Far away stands a desk, facing the doorway. There is a telephone on it. You cannot hear it ringing, but you can see the blinking red light of the telephone.",
       notice: "Do not enter. Do not try to answer the phone. Under no circumstances retrieve objects from the meadow.",
-      exit: "Return through the door"
+      exit: "Return through the door",
+      replies: [
+        "You reach for the telephone. It is still on the desk, a long way off across the grass.",
+        "The light goes on blinking. Your attempt to answer has been noted.",
+        "Second reminder: do not try to answer the phone.",
+        "For a moment the light goes out. Then it blinks again, a little faster.",
+        "The call is being held for you. It will be held for as long as it takes.",
+        "Somewhere across the meadow, a receiver is lifted. Nobody speaks.",
+      ]
       },
     answers: {
       d: 11, at: 1,

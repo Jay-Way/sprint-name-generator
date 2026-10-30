@@ -1259,12 +1259,17 @@ function renderRoom(room, extra) {
   if (room.kind === "bottom") {
     return '<h1 class="vh" id="room-title" tabindex="-1">B' + room.d + '</h1><div class="bottom"></div>';
   }
-  /* Through the door marked Storage (External): no form at all. The scene
-     itself is MEADOW_SVG, put in place by the page script. */
-  if (room.special === "meadow") {
-    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="meadow" aria-hidden="true"></div>'
-      + (room.notice ? '<p class="meadow-notice">' + room.notice + "</p>" : "")
-      + '<div class="meadow-caption"><p>' + room.text + '</p><nav class="exits meadow-exit" aria-label="Exits">'
+  /* The office with a window, and through the door marked Storage
+     (External): no form at all. The scenes themselves are WINDOW_SCENE and
+     MEADOW_SCENE, put in place by the page script. */
+  if (room.special === "meadow" || room.special === "window") {
+    const meadow = room.special === "meadow";
+    /* The window's description is posted on the sign, not on the carpet. */
+    const notice = meadow ? room.notice : room.text;
+    return '<h1 class="vh" id="room-title" tabindex="-1">' + room.name + '</h1><div class="' + (meadow ? "meadow" : "outlook") + '"></div>'
+      + (notice ? '<p class="scene-notice">' + notice + "</p>" : "")
+      + '<div class="scene-caption">' + (meadow ? "<p>" + room.text + "</p>" : "")
+      + (meadow ? '<p class="meadow-reply" id="meadow-reply" aria-live="polite"></p>' : "") + '<nav class="exits scene-exit" aria-label="Exits">'
       + room.exits.map(x => '<a href="#/' + x.to + '">' + x.label + "</a>").join("") + "</nav></div>";
   }
   const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -1354,6 +1359,22 @@ function renderRoom(room, extra) {
     if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
     for (const t of SPECIAL_ROOMS[f.special]) text(f[t], "fixed." + k + "." + t);
   }
+  const W = RECORDS.fixed.window;
+  for (const t of ["location", "level", "title", "more", "foot", "kicker", "heading", "ref", "dept", "ok"]) text((W.sign || {})[t], "fixed.window.sign." + t);
+  if (!Array.isArray(W.sign.rules) || !W.sign.rules.length) fail("fixed.window.sign.rules must be a list");
+  W.sign.rules.forEach((r, i) => { text(r.lead, "fixed.window.sign.rules[" + i + "].lead"); text(r.rest, "fixed.window.sign.rules[" + i + "].rest"); });
+  if (!W.stare || !Number.isInteger(W.stare.allowance)) fail("fixed.window.stare.allowance must be a whole number of seconds");
+  for (const t of ["reminder", "insurance", "over"]) text(W.stare[t], "fixed.window.stare." + t);
+  /* One pair of thoughts for each sky the page script can show. */
+  for (const sky of ["night", "dawn", "day", "dusk"]) {
+    const t = (W.stare.thoughts || {})[sky];
+    if (!Array.isArray(t) || t.length !== 2) fail("fixed.window.stare.thoughts." + sky + " must be two lines");
+    t.forEach((x, i) => text(x, "fixed.window.stare.thoughts." + sky + "[" + i + "]"));
+  }
+  text(RECORDS.fixed.personnel.exposure, "fixed.personnel.exposure");
+  if (!/\{total\}/.test(RECORDS.fixed.personnel.exposure) || !/\{hour\}/.test(RECORDS.fixed.personnel.exposure)) fail("fixed.personnel.exposure needs {total} and {hour}");
+  if (!Array.isArray(RECORDS.fixed.meadow.replies)) fail("fixed.meadow.replies must be a list");
+  RECORDS.fixed.meadow.replies.forEach((t, i) => text(t, "fixed.meadow.replies[" + i + "]"));
   for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
   for (const t of ["issued", "from", "reads", "uses", "display", "battery"]) text((RECORDS.fixed.badge.labels || {})[t], "fixed.badge.labels." + t);
 
@@ -1414,28 +1435,74 @@ function renderRoom(room, extra) {
   console.log("  basement: " + rooms.size + " rooms on B1-B" + RECORDS_OPEN + ", all with a way down");
 }
 
-/* The meadow. Drawn rather than photographed so it ships in the page;
-   if a painted one replaces it, it replaces this string and nothing else.
-   Overexposed on purpose - a memory of a field, not a field. */
-const MEADOW_SVG = `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="presentation">
-<defs>
-<linearGradient id="m-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9EC7EE"/><stop offset=".55" stop-color="#E2EBF8"/><stop offset=".7" stop-color="#FBF1E6"/></linearGradient>
-<radialGradient id="m-sun"><stop offset="0" stop-color="#FFFDF4"/><stop offset=".35" stop-color="#FFFDF4" stop-opacity=".7"/><stop offset="1" stop-color="#FFFDF4" stop-opacity="0"/></radialGradient>
-<linearGradient id="m-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CDE9A4"/><stop offset="1" stop-color="#86C463"/></linearGradient>
-<linearGradient id="m-haze" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#FFFFFF" stop-opacity="0"/><stop offset=".7" stop-color="#FFFFFF" stop-opacity=".6"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
-<filter id="m-soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
-</defs>
-<rect width="1600" height="900" fill="url(#m-sky)"/>
-<circle cx="1020" cy="290" r="320" fill="url(#m-sun)"/>
-<g class="m-clouds" filter="url(#m-soft)" fill="#FFFFFF" opacity=".85"><ellipse cx="300" cy="200" rx="190" ry="40"/><ellipse cx="430" cy="178" rx="120" ry="34"/><ellipse cx="960" cy="140" rx="220" ry="38"/><ellipse cx="1420" cy="232" rx="160" ry="30"/></g>
-<path d="M0 622 C 300 592 520 602 800 612 S 1300 596 1600 606 L1600 900 L0 900Z" fill="#D9ECC4"/>
-<path d="M0 662 C 400 642 900 652 1600 642 L1600 900 L0 900Z" fill="url(#m-grass)"/>
-<rect width="1600" height="900" fill="url(#m-haze)"/>
-<g transform="translate(915 566)"><rect width="30" height="66" fill="#3A3F48"/><rect x="-3" y="-3" width="36" height="72" fill="none" stroke="#F5F1E8" stroke-width="4"/></g>
-<ellipse cx="690" cy="668" rx="84" ry="8" fill="#6FA650" opacity=".45"/>
-<g transform="translate(690 664)" fill="#5E6672"><rect x="-72" y="-58" width="144" height="8" rx="2"/><rect x="-66" y="-50" width="7" height="50"/><rect x="59" y="-50" width="7" height="50"/><rect x="18" y="-50" width="41" height="30"/><rect x="34" y="-38" width="10" height="3" fill="#7A828E"/>
-<g transform="translate(-34 -58)"><rect x="-4" y="-17" width="40" height="17" rx="4" fill="#3B4049"/><rect x="-8" y="-24" width="48" height="8" rx="4" fill="#3B4049"/><g class="m-light"><circle cx="28" cy="-8" r="10" fill="#FF3B30" opacity=".22"/><circle cx="28" cy="-8" r="3.6" fill="#FF3B30"/></g></g></g>
-</svg>`;
+/* The meadow, as the Office's own painter left it: an almost empty room,
+   an open door, and the field beyond. Pure markup and CSS, so it ships
+   in the page. The grass is planted here at build time rather than by the
+   page script, so the meadow is the same field on every visit. */
+const MEADOW_SCENE = (() => {
+  const blade = (left, h, delay) => '<i class="m-blade" style="left:' + left + "%;height:" + h + "px;animation-delay:" + delay + 's"></i>';
+  const desk = [[8, 24, .1], [12, 31, .4], [16, 22, .8], [21, 28, .2], [26, 19, 1.1], [34, 25, .5],
+    [64, 23, .7], [71, 29, .3], [76, 33, .9], [81, 26, .2], [86, 30, 1.3], [91, 21, .6]].map(b => blade(...b)).join("");
+  let front = "";
+  /* The path to the desk is left clear. */
+  for (let i = 0; i < 24; i++) {
+    const pct = i / 24 * 100;
+    if (pct > 30 && pct < 68) continue;
+    front += blade(+pct.toFixed(2), 18 + (i % 5) * 6, +(i * .23).toFixed(2));
+  }
+  let spores = "";
+  for (let i = 0; i < 12; i++) {
+    const s = 2 + i % 3;
+    spores += '<i class="m-spore" style="width:' + s + "px;height:" + s + "px;left:" + (12 + i * 7 % 76) + "%;bottom:" + (15 + i * 11 % 45)
+      + "%;animation-delay:" + (i * .6).toFixed(1) + 's"></i>';
+  }
+  return '<div class="m-stage"><div class="m-lamp"></div><div class="m-wall"></div><div class="m-outlet"></div><div class="m-baseboard"></div>'
+    + '<div class="m-bin-rim"></div><div class="m-bin"></div><div class="m-paper"></div><div class="m-floor"></div><div class="m-spill"></div>'
+    + '<div class="m-door"><div class="m-leaf"><div class="m-handle"></div></div><div class="m-portal">'
+    + '<div class="m-sun"></div><div class="m-cloud m-cloud-1"></div><div class="m-cloud m-cloud-2"></div>'
+    + '<div class="m-hill-far"></div><div class="m-hill-mid"></div><div class="m-ground"></div><div class="m-path"></div>'
+    + '<div class="m-desk"><div class="m-chair"></div><div class="m-top"></div><div class="m-body"><div class="m-drawer"></div></div><div class="m-leg-l"></div><div class="m-leg-r"></div>'
+    + '<button type="button" class="m-phone" id="m-phone" aria-label="The telephone"><span class="m-base"></span><span class="m-handset"></span><span class="m-light"></span></button>'
+    + '<div class="m-desk-grass">' + desk + "</div></div>"
+    + '<div class="m-front-grass">' + front + '</div><div class="m-spores">' + spores + "</div></div></div></div>";
+})();
+
+/* The office with a window on B10, from the scene Jannik supplied: a bare
+   office, the window, and the safety notice beside it. The sky is set by
+   the page script from the visitor's clock; everything else is fixed. The
+   handle is on the far side of the glass, under the reflection. */
+const WINDOW_SCENE = (() => {
+  const S = RECORDS.fixed.window.sign;
+  const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const cloud = n => '<i class="w-cloud w-cloud-' + n + '"><i></i><i></i></i>';
+  const dust = [[25, 40, 0], [60, 55, 2.5], [42, 70, 5], [72, 30, 7], [33, 65, 1.3]]
+    .map(([l, t, d]) => '<i class="w-dust" style="left:' + l + "%;top:" + t + "%;animation-delay:" + d + 's"></i>').join("");
+  const plate = big => '<span class="w-plate"><span class="w-kicker">' + e(big ? S.kicker : S.location) + '</span><span class="w-level">' + e(S.level) + "</span></span>"
+    + '<span class="w-stripes"></span>';
+  const rivets = '<i class="w-rivet"></i><i class="w-rivet"></i><i class="w-rivet"></i><i class="w-rivet"></i>';
+  return '<div class="w-stage"><div class="w-zoom">'
+    + '<div class="w-ceiling"><div class="w-tube"></div></div>'
+    + '<div class="w-wall"><div class="w-vent"><i></i><i></i><i></i><i></i><i></i></div>'
+    + '<div class="w-centre"><div class="w-window-wrap">'
+    + '<div class="w-window" id="w-window" tabindex="0" role="img" aria-label="The window">' + rivets
+    + '<div class="w-recess"><div class="w-sky"><div class="w-glow"></div>' + cloud(1) + cloud(2) + cloud(3)
+    + '<div class="w-handle"><i></i></div><div class="w-rail"></div><div class="w-stile"></div><div class="w-sheen"></div>'
+    + '<i class="w-tear"></i><i class="w-tear w-tear-2"></i></div></div>'
+    + '<div class="w-sill"></div></div><div class="w-beam">' + dust + "</div></div>"
+    + '<button type="button" class="w-sign" id="w-sign">' + rivets + plate(false)
+    + '<span class="w-sign-title">' + e(S.title) + "</span>"
+    + '<span class="w-rules">' + S.rules.map(r => '<span class="w-rule">' + e(r.lead) + "</span>").join("") + "</span>"
+    + '<span class="w-sign-foot"><span>' + e(S.foot) + '</span><span class="w-more">' + e(S.more) + "</span></span></button></div>"
+    + '<div class="w-desk"><i class="w-mug"></i><i class="w-desktop"></i><i class="w-desk-body"><i class="w-leg"></i><i class="w-panel"></i><i class="w-drawers"><i></i><i></i></i><i class="w-leg"></i></i></div>'
+    + '<div class="w-bin"><i class="w-ball"></i><i class="w-can"></i></div><div class="w-outlet"><i></i><i></i></div><div class="w-skirting"></div></div>'
+    + '<div class="w-floor"><div class="w-reflection"></div></div>'
+    + '</div></div><div class="w-vignette"></div><div class="w-static"></div><p class="w-line" id="w-line" aria-live="polite"></p>'
+    + '<dialog class="w-notice" id="w-notice" aria-labelledby="w-notice-title"><div class="w-notice-card">' + rivets + plate(true)
+    + '<h2 class="w-notice-title" id="w-notice-title">' + e(S.heading) + '</h2><p class="w-ref">' + e(S.ref) + "</p>"
+    + '<ol class="w-list">' + S.rules.map((r, i) => '<li><span class="w-no">' + String(i + 1).padStart(2, "0") + "</span><span><strong>"
+      + e(r.lead) + "</strong> " + e(r.rest) + "</span></li>").join("") + "</ol>"
+    + '<form method="dialog" class="w-notice-foot"><span>' + e(S.dept) + '</span><button type="submit">' + e(S.ok) + "</button></form></div></dialog>";
+})();
 
 /* The torn foot of a form older than the Office: a fixed ragged edge, the
    same on every page, because it is the same sheet. */
@@ -1511,74 +1578,291 @@ const RECORDS_CSS = `
 .badge-facts dd{margin:0;color:var(--ink-2)}
 .badge .linkbtn{grid-column:1 / -1;justify-self:start;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase}
 
-/* The window on B10: the sky as it is outside, by the visitor's clock. */
-.window{
-  position:relative;
-  max-width:440px;
-  aspect-ratio:4/3;
-  margin-top:6px;
-  border:12px solid color-mix(in oklab, var(--sheet), var(--ink) 18%);
-  box-shadow:inset 0 0 40px rgba(0,0,0,.18);
-}
-.window::before,.window::after{content:"";position:absolute;background:color-mix(in oklab, var(--sheet), var(--ink) 18%)}
-.window::before{left:calc(50% - 4px);top:0;bottom:0;width:8px}
-.window::after{top:calc(45% - 4px);left:0;right:0;height:8px}
-.window[data-sky="day"]{background:radial-gradient(ellipse 30% 12% at 30% 30%, rgba(255,255,255,.9), transparent), radial-gradient(ellipse 24% 9% at 72% 22%, rgba(255,255,255,.75), transparent), linear-gradient(#5E9BD6, #CFE6F7)}
-.window[data-sky="dawn"]{background:linear-gradient(#2E3A66, #B9849E 55%, #F6D29B)}
-.window[data-sky="dusk"]{background:linear-gradient(#2B2A57, #C2618A 55%, #F2A65A)}
-.window[data-sky="night"]{background:radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 62% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 52%, #fff, transparent), radial-gradient(1px 1px at 38% 66%, #fff, transparent), radial-gradient(1px 1px at 12% 74%, #fff, transparent), linear-gradient(#070B1E, #1C2347)}
+/* The office with a window on B10. Like the meadow, no form: the room,
+   the window, the notice beside it. Looking out (hover, a held finger, or
+   focus) draws the room slowly in; the page script counts the seconds. */
+:root[data-scene="window"] body{background:#1a1b18}
+.outlook{position:fixed;inset:0;z-index:0;overflow:hidden;background:#1a1b18;user-select:none;-webkit-touch-callout:none;--cloud:rgba(255,255,255,.75);--beam:rgba(173,216,255,.22);--halo:rgba(142,197,252,.55)}
+.outlook[data-sky="dawn"]{--cloud:rgba(255,228,214,.6);--beam:rgba(246,210,155,.2);--halo:rgba(246,210,155,.5)}
+.outlook[data-sky="dusk"]{--cloud:rgba(255,196,170,.5);--beam:rgba(242,166,90,.18);--halo:rgba(242,166,90,.45)}
+.outlook[data-sky="night"]{--beam:rgba(150,170,230,.1);--halo:rgba(120,140,220,.35)}
+.w-stage{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
+/* Drawn in until the frame is past every edge and there is only the
+   glass; let go in a fraction of the time. The page script aims it. */
+.w-zoom{position:absolute;inset:0;transform-origin:42% 45%;transition:transform 2.5s cubic-bezier(.25,.46,.45,.94), filter 2.5s ease}
+.outlook[data-staring] .w-zoom{transform:translate(var(--dx, 0), var(--dy, 0)) scale(var(--zoom, 1.09));filter:contrast(1.06) saturate(1.15);transition:transform 24s cubic-bezier(.42,0,.58,1), filter 6s ease}
+.w-ceiling{position:absolute;top:0;left:0;right:0;height:11%;z-index:20;display:flex;align-items:center;justify-content:center;background:linear-gradient(#7a7768, #9c9885);border-bottom:6px solid #595649;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+.w-ceiling::before{content:"";position:absolute;inset:0;opacity:.25;background-image:linear-gradient(90deg, transparent 49%, #222 50%, transparent 51%);background-size:220px 100%}
+.w-tube{position:relative;width:320px;height:24px;box-sizing:border-box;background:#f7fae6;border:2px solid #71717a;border-radius:2px;box-shadow:0 10px 15px rgba(0,0,0,.2);animation:w-hum 9s infinite}
+.w-tube::before{content:"";position:absolute;left:12px;right:12px;top:7px;height:6px;background:#fff;filter:blur(1px)}
+.w-tube::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,.8), transparent)}
+@keyframes w-hum{0%,100%{opacity:.96;filter:drop-shadow(0 15px 35px rgba(245,250,225,.45))}48%{opacity:.96}49%{opacity:.65;filter:drop-shadow(0 8px 15px rgba(245,250,225,.2))}50%{opacity:.98}51%{opacity:.85}52%,87%{opacity:.96}88%{opacity:.4}89%{opacity:.96}}
+.w-wall{position:absolute;top:11%;bottom:18%;left:0;right:0;z-index:10;background-color:#c2beaa;background-image:radial-gradient(circle at 50% 25%, rgba(255,253,240,.25) 0%, rgba(0,0,0,.65) 85%, rgba(0,0,0,.9) 100%), repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0 2px, transparent 2px 10px), repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 4px)}
+.w-wall::before,.w-wall::after{content:"";position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.1)}
+.w-wall::before{left:18%}
+.w-wall::after{right:18%}
+.w-vent{position:absolute;top:40px;left:12%;width:112px;height:64px;box-sizing:border-box;padding:6px;display:flex;flex-direction:column;justify-content:space-between;background:#9e9a87;border:2px solid #787565;box-shadow:inset 0 2px 4px rgba(0,0,0,.3);opacity:.85}
+.w-vent i{display:block;height:6px;background:#3d3b33;border-radius:2px}
+.w-centre{position:absolute;top:-16px;bottom:16px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:80px}
+.w-window-wrap{position:relative}
+.w-window{position:relative;width:370px;height:430px;box-sizing:border-box;padding:14px;background:#5c5a52;border:4px solid #3f3e38;border-radius:2px;box-shadow:0 25px 50px rgba(0,0,0,.75), inset 0 2px 4px rgba(255,255,255,.3);transition:box-shadow 1s;cursor:crosshair;outline:none}
+.w-window:focus-visible{outline:2px solid #fef08a;outline-offset:6px}
+.outlook[data-staring] .w-window{box-shadow:0 0 80px var(--halo), inset 0 0 30px rgba(255,255,255,.7)}
+.w-rivet{position:absolute;width:8px;height:8px;border-radius:50%;background:#3f3f46}
+.w-rivet:nth-of-type(1){top:4px;left:4px}
+.w-rivet:nth-of-type(2){top:4px;right:4px}
+.w-rivet:nth-of-type(3){bottom:4px;left:4px}
+.w-rivet:nth-of-type(4){bottom:4px;right:4px}
+.w-recess{position:relative;width:100%;height:100%;box-sizing:border-box;padding:8px;overflow:hidden;background:#dad7cd;border:2px solid #787569;box-shadow:inset 0 6px 16px rgba(0,0,0,.6)}
+/* The sky, by the visitor's clock: the same four skies the window has
+   always had, drifting slowly. */
+.w-sky{position:relative;width:100%;height:100%;overflow:hidden;background-size:300% 300%;animation:w-shift 28s ease-in-out infinite;box-shadow:inset 0 0 30px rgba(0,30,60,.25)}
+.outlook[data-sky="day"] .w-sky{background-image:linear-gradient(165deg, #3a7bd5, #5691c8, #8ec5fc, #e0c3fc, #97d9e1, #3a7bd5)}
+.outlook[data-sky="dawn"] .w-sky{background-image:linear-gradient(165deg, #2E3A66, #6D6A92, #B9849E, #F6D29B, #B9849E, #2E3A66)}
+.outlook[data-sky="dusk"] .w-sky{background-image:linear-gradient(165deg, #2B2A57, #7A4A7E, #C2618A, #F2A65A, #C2618A, #2B2A57)}
+.outlook[data-sky="night"] .w-sky{background-image:linear-gradient(165deg, #070B1E, #111836, #1C2347, #111836, #070B1E)}
+.outlook[data-sky="night"] .w-sky::before{content:"";position:absolute;inset:0;background:radial-gradient(1px 1px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 62% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 62%, #fff, transparent), radial-gradient(1px 1px at 38% 76%, #fff, transparent), radial-gradient(1px 1px at 12% 84%, #fff, transparent), radial-gradient(1px 1px at 86% 12%, #fff, transparent), radial-gradient(1.5px 1.5px at 30% 10%, #fff, transparent), radial-gradient(1px 1px at 70% 40%, #fff, transparent)}
+@keyframes w-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.w-glow{position:absolute;top:-40px;right:-40px;width:224px;height:224px;border-radius:50%;background:rgba(255,255,255,.4);filter:blur(40px);pointer-events:none}
+.outlook[data-sky="night"] .w-glow{top:-20px;right:-20px;width:140px;height:140px;background:rgba(220,230,255,.18)}
+.w-cloud{position:absolute;left:0;border-radius:999px;background:var(--cloud);filter:blur(6px)}
+.w-cloud i{position:absolute;border-radius:999px;background:var(--cloud)}
+.outlook[data-sky="night"] .w-cloud{display:none}
+.w-cloud-1{top:18%;width:176px;height:56px;animation:w-c1 45s linear infinite}
+.w-cloud-1 i:nth-child(1){top:-28px;left:24px;width:96px;height:80px}
+.w-cloud-1 i:nth-child(2){top:-16px;right:20px;width:80px;height:64px}
+.w-cloud-2{top:54%;width:224px;height:64px;opacity:.85;animation:w-c2 65s linear -25s infinite}
+.w-cloud-2 i:nth-child(1){top:-36px;left:40px;width:112px;height:96px}
+.w-cloud-2 i:nth-child(2){top:-20px;right:32px;width:96px;height:80px}
+.w-cloud-3{top:78%;width:192px;height:40px;opacity:.65;filter:blur(12px);animation:w-c1 55s linear -12s infinite}
+.w-cloud-3 i:nth-child(1){top:-16px;left:32px;width:96px;height:48px}
+.w-cloud-3 i:nth-child(2){display:none}
+@keyframes w-c1{0%{transform:translateX(-110%) translateY(0) scale(1)}50%{transform:translateX(0) translateY(-6px) scale(1.05)}100%{transform:translateX(220%) translateY(0) scale(1)}}
+@keyframes w-c2{0%{transform:translateX(-140%) translateY(4px) scale(.9)}50%{transform:translateX(20%) translateY(-4px) scale(1)}100%{transform:translateX(200%) translateY(4px) scale(.9)}}
+/* The handle, fitted on the other side: its rose is behind the frame,
+   and only part of the lever reaches into the glass, under the
+   reflection. */
+.w-handle{position:absolute;top:calc(50% + 12px);right:-20px;z-index:8;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 40% 35%, #f5e3a1, #b88a2c 60%, #7a5a18);box-shadow:0 2px 3px rgba(0,0,0,.35);opacity:.6;filter:blur(.7px) saturate(.7)}
+.w-handle i{position:absolute;top:5px;left:5px;width:54px;height:6px;border-radius:3px;background:linear-gradient(#f2d98a, #a87b22);transform:rotate(128deg);transform-origin:3px 50%;box-shadow:0 2px 2px rgba(0,0,0,.3)}
+.w-rail{position:absolute;left:0;right:0;top:50%;z-index:10;height:14px;transform:translateY(-50%);background:#d0cdc2;border-top:1px solid #8c897a;border-bottom:1px solid #8c897a;box-shadow:0 4px 6px rgba(0,0,0,.2)}
+.w-stile{position:absolute;top:0;bottom:0;left:50%;z-index:9;width:10px;transform:translateX(-50%);background:#d0cdc2;border-left:1px solid #8c897a;border-right:1px solid #8c897a}
+.w-sheen{position:absolute;inset:0;z-index:11;background:linear-gradient(to top right, transparent, rgba(255,255,255,.15), transparent);transform:skewX(-12deg);pointer-events:none}
+.w-sill{position:absolute;bottom:-20px;left:-16px;right:-16px;height:20px;box-sizing:border-box;background:#706d62;border-top:2px solid #969386;border-bottom:4px solid #3b3933;box-shadow:0 12px 20px rgba(0,0,0,.6)}
+.w-beam{position:absolute;top:12px;left:0;right:0;z-index:20;height:420px;background:linear-gradient(180deg, var(--beam) 0%, rgba(224,195,252,.08) 60%, transparent 100%);clip-path:polygon(8% 0, 92% 0, 100% 100%, 0 100%);pointer-events:none}
+.w-dust{position:absolute;width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.6);filter:blur(.5px);opacity:0;animation:w-dust 10s linear infinite}
+@keyframes w-dust{0%{transform:translate(0, 0);opacity:0}25%,75%{opacity:.65}100%{transform:translate(25px, -90px);opacity:0}}
+/* The notice beside the window. The wall shows the leads; a click reads
+   the whole of it. */
+.w-sign{position:relative;display:block;width:250px;box-sizing:border-box;padding:14px;background:#e6e2d5;color:#18181b;border:4px solid #27272a;border-radius:0;box-shadow:0 12px 28px rgba(0,0,0,.65);font:inherit;text-align:left;cursor:pointer;transition:transform .3s, box-shadow .3s}
+.w-sign:hover{transform:scale(1.03);box-shadow:0 15px 35px rgba(0,0,0,.85)}
+.w-sign:focus-visible{outline:2px solid #fef08a;outline-offset:4px}
+.w-sign .w-rivet{width:6px;height:6px;background:#71717a}
+.w-plate{display:block;margin-bottom:8px;padding:6px 8px;background:#b91c1c;color:#fff;border:1px solid #18181b;text-align:center}
+.w-kicker{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;opacity:.9}
+.w-level{display:block;margin-top:2px;font-family:"Archivo Black",sans-serif;font-size:18px;line-height:1}
+.w-stripes{display:block;height:6px;margin-bottom:10px;border-top:1px solid #27272a;border-bottom:1px solid #27272a;background:repeating-linear-gradient(-45deg, #eab308 0 6px, #18181b 6px 12px)}
+.w-sign-title{display:block;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #a1a1aa;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.w-sign-title::before{content:"\\26A0";margin-right:6px;color:#b91c1c}
+.w-rules{display:block}
+.w-rule{position:relative;display:block;margin-bottom:8px;padding-left:12px;font-size:11px;font-weight:500;line-height:1.3;color:#27272a}
+.w-rule::before{content:"\\2022";position:absolute;left:0;color:#b91c1c;font-weight:700}
+.w-sign-foot{display:flex;justify-content:space-between;gap:8px;margin-top:12px;padding-top:6px;border-top:1px solid #d4d4d8;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:8px;letter-spacing:.04em;text-transform:uppercase;color:#71717a;transition:color .3s}
+.w-more{text-decoration:underline}
+.w-sign:hover .w-sign-foot{color:#b91c1c}
+.w-desk{position:absolute;bottom:0;right:12%;z-index:20;display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.w-mug{position:relative;display:block;align-self:flex-end;width:14px;height:16px;margin-right:32px;box-sizing:border-box;background:#d9d2c5;border:1px solid #52525b;border-radius:0 0 2px 2px}
+.w-mug::after{content:"";position:absolute;right:-8px;top:2px;width:6px;height:9px;border:2px solid #d9d2c5;border-left:0;border-radius:0 9px 9px 0}
+.w-desktop{display:block;width:224px;height:12px;box-sizing:border-box;background:#757063;border-top:1px solid #9c9686;border-bottom:2px solid #423f37;box-shadow:0 4px 6px rgba(0,0,0,.3)}
+.w-desk-body{display:flex;justify-content:space-between;width:208px;height:80px}
+.w-leg{display:block;flex:none;width:8px;height:100%;background:#45433e;box-shadow:0 4px 6px rgba(0,0,0,.3)}
+.w-panel{display:block;flex:1;height:40px;background:#524f48;border-bottom:1px solid #383631;box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
+.w-drawers{display:flex;flex:none;flex-direction:column;gap:4px;width:56px;height:64px;box-sizing:border-box;padding:4px;background:#5c5952;border-left:1px solid #383631}
+.w-drawers i{position:relative;display:block;flex:1;border:1px solid #42403b}
+.w-drawers i::after{content:"";position:absolute;left:calc(50% - 6px);top:calc(50% - 1px);width:12px;height:2px;background:#a1a1aa}
+.w-bin{position:absolute;bottom:0;right:4%;z-index:20;display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.w-ball{display:block;width:12px;height:10px;margin:0 0 -4px 8px;border-radius:50%;background:#e6e3d8;transform:rotate(12deg)}
+.w-can{display:block;width:40px;height:48px;box-sizing:border-box;background:linear-gradient(90deg, #4f4e48, #66645c, #42413c);border-top:2px solid #a1a1aa;clip-path:polygon(0 0, 100% 0, 86% 100%, 14% 100%)}
+.w-outlet{position:absolute;bottom:28px;left:12%;width:16px;height:24px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-around;background:#d6d1c4;border:1px solid #52525b;opacity:.8}
+.w-outlet i{display:block;width:8px;height:6px;box-sizing:border-box;border:1px solid #52525b;border-radius:1px}
+.w-skirting{position:absolute;bottom:0;left:0;right:0;z-index:10;height:16px;box-sizing:border-box;background:#3d3a32;border-top:2px solid #545046;box-shadow:0 -2px 6px rgba(0,0,0,.2)}
+.w-floor{position:absolute;bottom:0;left:0;right:0;z-index:20;height:18%;display:flex;justify-content:center;background:radial-gradient(ellipse at 50% 0%, rgba(145,210,255,.18) 0%, transparent 65%), repeating-linear-gradient(45deg, #2e2c26 0 2px, #262520 2px 4px);box-shadow:inset 0 20px 40px rgba(0,0,0,.85)}
+.w-reflection{width:440px;height:100%;background:linear-gradient(var(--beam), transparent);filter:blur(24px);transform:translateX(-165px);pointer-events:none}
+.w-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 150px 45px rgba(10,10,8,.85);transition:box-shadow 1s}
+.outlook[data-staring] .w-vignette{box-shadow:inset 0 0 220px 90px rgba(8,12,24,.95)}
+/* The longer the look, the less the room holds together: the page script
+   raises data-glitch at 5, 8 and 11 seconds. Bands of the sky slip out of
+   true, the picture rolls, the frame jolts, and at the last, the whole
+   view drops out for a frame. */
+.w-tear{position:absolute;left:-4%;right:-4%;z-index:12;height:7%;opacity:0;pointer-events:none;backdrop-filter:hue-rotate(70deg) saturate(1.8) brightness(1.15);transform:translateX(3%) skewX(-8deg)}
+.w-tear-2{height:3%;backdrop-filter:invert(.12) hue-rotate(-40deg) contrast(1.4)}
+.outlook[data-glitch] .w-tear{animation:w-tear 3.1s steps(1) infinite}
+.outlook[data-glitch] .w-tear-2{animation-duration:4.7s;animation-delay:-1.9s}
+.outlook[data-glitch="2"] .w-tear{animation-duration:1.7s}
+.outlook[data-glitch="3"] .w-tear{animation-duration:.9s}
+@keyframes w-tear{0%,100%{opacity:0}12%{top:22%;opacity:1}15%{opacity:0}47%{top:63%;opacity:1;transform:translateX(-4%) skewX(6deg)}49%{opacity:0}81%{top:38%;opacity:1}84%{opacity:0}}
+.outlook[data-glitch="2"] .w-window-wrap,.outlook[data-glitch="3"] .w-window-wrap{animation:w-jolt 2.3s steps(1) infinite}
+.outlook[data-glitch="3"] .w-window-wrap{animation-duration:1.1s}
+@keyframes w-jolt{0%,100%{transform:none}90%{transform:translate(3px, -1px)}93%{transform:translate(-4px, 2px)}96%{transform:none}}
+.outlook[data-glitch] .w-sky{animation:w-shift 28s ease-in-out infinite, w-drift 5s steps(1) infinite}
+@keyframes w-drift{0%,100%{filter:none}70%{filter:hue-rotate(28deg) saturate(1.6)}72%{filter:none}}
+.w-static{position:absolute;inset:0;z-index:2;opacity:0;pointer-events:none;background:repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 3px);mix-blend-mode:overlay;transition:opacity 2s}
+.outlook[data-glitch] .w-static{opacity:.6;animation:w-roll 7s linear infinite}
+.outlook[data-glitch="3"] .w-static{opacity:1}
+@keyframes w-roll{to{background-position:0 150px}}
+.outlook::after{content:"";position:absolute;inset:0;z-index:4;opacity:0;pointer-events:none;background:#fff;mix-blend-mode:difference}
+.outlook[data-glitch="3"]::after{animation:w-drop 5.3s steps(1) infinite}
+@keyframes w-drop{0%,100%{opacity:0}61%{opacity:.35}62%{opacity:0}}
+.outlook[data-glitch="2"] .w-line,.outlook[data-glitch="3"] .w-line{animation:w-split 2.9s steps(1) infinite}
+@keyframes w-split{0%,100%{text-shadow:none}40%{text-shadow:-2px 0 rgba(255,0,70,.7), 2px 0 rgba(0,220,255,.7)}44%{text-shadow:none}}
+/* What comes to mind, and what the Office has to say about it. */
+.w-line{position:absolute;top:24px;left:50%;z-index:3;width:max-content;max-width:min(52ch, calc(100% - 32px));margin:0;padding:10px 16px;transform:translateX(-50%);background:rgba(0,0,0,.8);border:1px solid rgba(230,226,213,.25);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;line-height:1.5;letter-spacing:.03em;color:#e6e2d5;text-align:center;opacity:0;transition:opacity 1s;pointer-events:none}
+.w-line.is-on{opacity:1}
+.w-notice{max-width:min(448px, calc(100% - 32px));padding:0;border:0;background:transparent;user-select:text}
+.w-notice::backdrop{background:rgba(0,0,0,.8);backdrop-filter:blur(4px)}
+.w-notice-card{position:relative;padding:24px;background:#e8e4d8;color:#18181b;border:6px solid #27272a;box-shadow:0 25px 70px rgba(0,0,0,.9);font-family:"IBM Plex Sans",system-ui,sans-serif}
+.w-notice .w-rivet{width:12px;height:12px;background:#a1a1aa;border:1px solid #52525b;box-sizing:border-box}
+.w-notice .w-rivet:nth-of-type(1),.w-notice .w-rivet:nth-of-type(2){top:8px}
+.w-notice .w-rivet:nth-of-type(3),.w-notice .w-rivet:nth-of-type(4){bottom:8px}
+.w-notice .w-rivet:nth-of-type(odd){left:8px}
+.w-notice .w-rivet:nth-of-type(even){right:8px}
+.w-notice .w-plate{margin-bottom:16px;padding:12px 16px;border-width:2px}
+.w-notice .w-kicker{font-size:11px;letter-spacing:.25em}
+.w-notice .w-level{font-size:30px}
+.w-notice .w-stripes{height:12px;margin-bottom:20px;background:repeating-linear-gradient(-45deg, #eab308 0 10px, #18181b 10px 20px)}
+.w-notice-title{margin:0;font-family:"Archivo Black",sans-serif;font-size:16px;font-weight:400;letter-spacing:.06em;text-transform:uppercase}
+.w-notice-title::before{content:"\\26A0";margin-right:8px;color:#b91c1c}
+.w-ref{margin:2px 0 16px;padding-bottom:8px;border-bottom:2px solid #a1a1aa;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:#52525b}
+.w-list{display:grid;gap:14px;margin:0 0 24px;padding:0;list-style:none;font-size:14px;line-height:1.4;color:#27272a}
+.w-list li{display:flex;gap:10px;align-items:flex-start}
+.w-no{flex:none;padding:2px 6px;background:#fee2e2;border:1px solid #fca5a5;border-radius:2px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;font-weight:700;color:#b91c1c}
+.w-notice-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:12px;border-top:1px solid #a1a1aa;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;text-transform:uppercase;color:#52525b}
+.w-notice-foot button{padding:4px 12px;background:#27272a;color:#fff;border:0;border-radius:2px;font:inherit;font-size:12px;cursor:pointer}
+.w-notice-foot button:hover{background:#3f3f46}
+/* The line on the wall, here, is on the carpet. */
+:root[data-scene="window"] .scene-caption{top:auto;bottom:24px;max-width:52ch;color:#d6d1c4}
+:root[data-scene="window"] .scene-notice{max-width:320px}
+@media (max-width:639px){:root[data-scene="window"] .scene-notice{right:16px;bottom:64px;max-width:none}}
+@media (prefers-reduced-motion:reduce){.outlook *,.outlook ::before,.outlook ::after,.outlook::after{animation:none !important;transition:none !important}.outlook[data-staring] .w-zoom{transform:none}.w-dust,.w-tear,.w-static{display:none}}
 
 /* Storage (External). The form is not here: no sheet, no masthead, no
-   footer, only the field and the way back. Stays bright in dark mode -
-   it is not part of the building's lighting. */
-:root[data-scene="meadow"] body{background:#CFE3F5;padding:0;animation:none}
-:root[data-scene="meadow"] .sheet{background:transparent;border:0;box-shadow:none !important;clip-path:none;max-width:none}
-:root[data-scene="meadow"] .masthead,:root[data-scene="meadow"] .fineprint{display:none}
-.meadow{position:fixed;inset:0;z-index:0}
-.meadow svg{display:block;width:100%;height:100%;filter:saturate(1.12) brightness(1.04)}
-.m-clouds{animation:drift 90s ease-in-out infinite alternate}
-@keyframes drift{to{transform:translateX(-70px)}}
-/* Up in the empty sky, so the desk stays in view below it. */
-.meadow-caption{
-  position:fixed;left:0;right:0;top:max(9vh, 48px);z-index:1;
+   footer, only an empty room, the open door, and the way back. The room
+   keeps its own lighting in either colour scheme - it is not part of the
+   building's. */
+:root[data-scene] body{padding:0;animation:none}
+:root[data-scene="meadow"] body{background:#0f131d}
+:root[data-scene] .sheet{background:transparent;border:0;box-shadow:none !important;clip-path:none;max-width:none}
+:root[data-scene] .masthead,:root[data-scene] .fineprint{display:none}
+.meadow{position:fixed;inset:0;z-index:0;overflow:hidden;background:#0f131d;user-select:none}
+/* Drawn at a fixed size and scaled to the window by the page script, so
+   the door is the same door on a phone and on a wall-sized screen. */
+.m-stage{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
+.m-stage div,.m-stage i,.m-stage span{position:absolute;display:block}
+.m-wall{inset:0 0 28% 0;z-index:5;background:radial-gradient(circle at 50% 62%, rgba(255,224,150,.25) 0%, rgba(26,31,44,.92) 56%, #0f131d 90%), repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 48px)}
+.m-baseboard{bottom:28%;left:0;right:0;height:14px;z-index:6;background:linear-gradient(90deg, #0d1017 0%, #242938 35%, #242938 65%, #0d1017 100%);border-top:1px solid rgba(255,255,255,.07);border-bottom:2px solid #080a0f}
+.m-floor{inset:72% 0 0 0;z-index:5;overflow:hidden;background:linear-gradient(180deg, #0e1118 0%, #161b26 35%, #0b0d13 100%)}
+.m-floor::before{content:"";position:absolute;inset:0;background-image:linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,.025) 1px, transparent 1px);background-size:64px 36px;transform:perspective(300px) rotateX(65deg) scale(1.8);transform-origin:top center}
+/* The light from the doorway, on the office floor. */
+.m-spill{top:72%;left:50%;width:380px;height:220px;z-index:7;transform:translateX(-50%);background:linear-gradient(180deg, rgba(253,230,138,.38) 0%, rgba(167,243,208,.14) 55%, transparent 100%);clip-path:polygon(22% 0, 78% 0, 100% 100%, 0 100%);filter:blur(8px);pointer-events:none;animation:m-breath 6s ease-in-out infinite alternate}
+@keyframes m-breath{from{opacity:.82}to{opacity:1}}
+.m-outlet{bottom:31.5%;left:23%;width:16px;height:24px;z-index:6;background:#1f2433;border:1px solid rgba(255,255,255,.08);border-radius:2px;box-shadow:0 2px 5px rgba(0,0,0,.5)}
+.m-outlet::before,.m-outlet::after{content:"";position:absolute;left:4px;width:6px;height:4px;background:#0d1017;border-radius:1px}
+.m-outlet::before{top:5px}
+.m-outlet::after{bottom:5px}
+.m-bin{bottom:18%;right:17%;width:44px;height:56px;z-index:8;background:linear-gradient(135deg, #1e2536 0%, #0f131c 100%);clip-path:polygon(0 0, 100% 0, 84% 100%, 16% 100%)}
+.m-bin-rim{bottom:calc(18% + 53px);right:calc(17% - 2px);width:48px;height:7px;z-index:8;background:#2b3348;border-radius:50%}
+.m-paper{bottom:13%;left:26%;width:34px;height:22px;z-index:8;background:#94a3b8;opacity:.45;transform:rotate(-18deg) skewX(24deg);box-shadow:0 3px 8px rgba(0,0,0,.6)}
+/* The ceiling tube, which is mostly off. */
+.m-lamp{top:18px;left:50%;width:240px;height:10px;z-index:8;transform:translateX(-50%);background:#1e2330;border:1px solid rgba(255,255,255,.06);border-radius:4px}
+.m-lamp::after{content:"";position:absolute;inset:2px 10px;background:rgba(203,213,225,.15);border-radius:2px;animation:m-flicker 9s infinite}
+@keyframes m-flicker{0%,92%,96%,100%{opacity:.25}94%,98%{opacity:.7;box-shadow:0 0 15px rgba(186,230,253,.4)}}
+.m-door{bottom:28%;left:50%;width:220px;height:325px;z-index:10;transform:translateX(-50%);box-sizing:border-box;padding:10px 10px 0;background:#272d3d;border-radius:6px 6px 0 0;box-shadow:0 -8px 40px rgba(253,224,71,.18), 0 0 0 2px #131722, inset 0 2px 4px rgba(255,255,255,.1)}
+.m-leaf{top:8px;left:-82px;width:86px;height:325px;z-index:15;transform:skewY(-11deg);transform-origin:right center;background:linear-gradient(90deg, #3b281e 0%, #5c3d2e 75%, #462e22 100%);border:1px solid #291a12;border-radius:3px 0 0 3px;box-shadow:-18px 18px 28px rgba(0,0,0,.75), inset 3px 0 8px rgba(253,224,71,.22)}
+.m-leaf::before,.m-leaf::after{content:"";position:absolute;left:14px;right:14px;border:2px solid rgba(28,17,10,.55);background:rgba(0,0,0,.08)}
+.m-leaf::before{top:22px;height:115px}
+.m-leaf::after{bottom:26px;height:135px}
+.m-handle{top:52%;left:12px;width:16px;height:7px;z-index:16;background:linear-gradient(180deg, #fef08a, #ca8a04);border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.6)}
+.m-stage .m-portal{position:relative;width:100%;height:100%;overflow:hidden;border-radius:2px 2px 0 0;background:linear-gradient(180deg, #a5f3fc 0%, #fde68a 42%, #fbcfe8 60%, #86efac 62%, #22c55e 82%, #15803d 100%);box-shadow:inset 0 0 28px rgba(254,240,138,.45)}
+.m-sun{top:34px;left:50%;width:68px;height:68px;border-radius:50%;background:radial-gradient(circle, #fff 15%, #fef08a 60%, rgba(253,224,71,0) 100%);filter:blur(1px);transform:translateX(-50%);animation:m-sun 5s ease-in-out infinite alternate}
+@keyframes m-sun{from{transform:translateX(-50%) scale(.95);opacity:.9}to{transform:translateX(-50%) scale(1.08);opacity:1}}
+.m-cloud{background:rgba(255,255,255,.78);border-radius:999px;filter:blur(1px)}
+.m-cloud-1{top:46px;left:-20px;width:64px;height:16px;animation:m-cloud 22s linear infinite}
+.m-cloud-2{top:78px;left:-40px;width:48px;height:12px;opacity:.65;animation:m-cloud 29s linear 6s infinite}
+@keyframes m-cloud{to{transform:translateX(270px)}}
+.m-hill-far{top:52%;left:-25%;width:150%;height:90px;opacity:.85;border-radius:50%;background:linear-gradient(180deg, #6ee7b7 0%, #34d399 100%)}
+.m-hill-mid{top:56%;right:-30%;width:150%;height:110px;border-radius:50%;background:linear-gradient(180deg, #4ade80 0%, #16a34a 100%)}
+.m-ground{top:60%;left:0;right:0;bottom:0;background:linear-gradient(180deg, #4ade80 0%, #16a34a 55%, #14532d 100%)}
+.m-path{bottom:0;left:50%;width:130px;height:118px;opacity:.9;transform:translateX(-50%);background:linear-gradient(180deg, #fde68a 0%, #d97706 45%, #b45309 100%);clip-path:polygon(43% 14%, 57% 14%, 86% 100%, 14% 100%);filter:drop-shadow(0 0 6px rgba(251,191,36,.3))}
+.m-path::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 3px, transparent 3px 11px)}
+.m-desk{bottom:62px;left:50%;width:96px;height:64px;z-index:12;transform:translateX(-50%)}
+.m-chair{bottom:24px;left:50%;width:26px;height:30px;z-index:1;transform:translateX(-50%);box-sizing:border-box;background:#1e293b;border:1px solid #334155;border-radius:6px 6px 2px 2px}
+.m-top{bottom:22px;left:4px;right:4px;height:10px;z-index:3;background:linear-gradient(90deg, #78350f, #b45309, #92400e);border-top:2px solid #fcd34d;border-radius:2px;box-shadow:0 4px 10px rgba(0,0,0,.45)}
+.m-body{bottom:5px;left:10px;right:10px;height:18px;z-index:2;background:#451a03;border-left:4px solid #78350f;border-right:4px solid #78350f}
+.m-drawer{top:2px;right:2px;width:22px;height:14px;background:#5c2406;border:1px solid #290f02}
+.m-leg-l,.m-leg-r{bottom:-2px;width:4px;height:24px;z-index:2;background:#290f02}
+.m-leg-l{left:9px}
+.m-leg-r{right:9px}
+/* The telephone. It is a button, because people will try; the notice
+   asks them not to. The hit area is wider than the telephone. */
+.m-phone{position:absolute;bottom:31px;left:52%;width:24px;height:14px;z-index:6;padding:0;border:0;background:none;transform:translateX(-50%);cursor:pointer}
+.m-phone::before{content:"";position:absolute;inset:-12px -10px}
+.m-phone:focus-visible{outline:2px solid #fef08a;outline-offset:6px}
+.m-base{bottom:0;left:2px;width:20px;height:8px;background:linear-gradient(180deg, #334155 0%, #0f172a 100%);border-top:1px solid #64748b;border-radius:3px 3px 1px 1px;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.m-handset{bottom:6px;left:0;width:24px;height:5px;background:#1e293b;border-top:1px solid #475569;border-radius:4px;animation:m-shake 4s ease-in-out infinite}
+@keyframes m-shake{0%,82%,100%{transform:rotate(0) translateY(0)}84%,88%,92%,96%{transform:rotate(-4deg) translateY(-1.5px)}86%,90%,94%,98%{transform:rotate(4deg) translateY(-1.5px)}}
+.m-light{bottom:4px;right:4px;width:6px;height:6px;z-index:10;border-radius:50%;background:#ef4444;animation:m-blink var(--blink, 1.1s) ease-in-out infinite}
+.m-light::after{content:"";position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle, rgba(239,68,68,.9) 0%, rgba(239,68,68,0) 70%);animation:m-halo var(--blink, 1.1s) ease-in-out infinite}
+@keyframes m-blink{0%,100%{background:#ff2a2a;box-shadow:0 0 8px 3px #ef4444, 0 0 18px 6px rgba(239,68,68,.85);transform:scale(1.18)}50%{background:#450a0a;box-shadow:none;transform:scale(.88)}}
+@keyframes m-halo{0%,100%{transform:scale(1.4);opacity:1}50%{transform:scale(.5);opacity:0}}
+.m-desk-grass{left:-35px;right:-35px;bottom:-4px;height:40px;pointer-events:none}
+.m-front-grass{left:0;right:0;bottom:0;height:56px;z-index:20;pointer-events:none}
+.m-blade{bottom:0;width:4px;z-index:8;background:linear-gradient(180deg, #bbf7d0 0%, #15803d 100%);border-radius:100% 0 0 0;transform-origin:bottom center;animation:m-sway 3.2s ease-in-out infinite alternate}
+@keyframes m-sway{from{transform:rotate(-9deg)}to{transform:rotate(11deg)}}
+.m-spores{inset:0;pointer-events:none}
+.m-spore{border-radius:50%;background:#fef08a;box-shadow:0 0 8px #fde047;opacity:0;animation:m-float 7s ease-in-out infinite}
+@keyframes m-float{0%{transform:translate(0, 0) scale(.6);opacity:0}40%{opacity:.95}100%{transform:translate(14px, -110px) scale(1.1);opacity:0}}
+/* Up on the wall above the door, so nothing in the field is covered. */
+.scene-caption{
+  position:fixed;left:0;right:0;top:max(6vh, 32px);z-index:1;
   max-width:60ch;
   margin:0 auto;
   padding:0 16px;
   text-align:center;
   font-size:.95rem;
   line-height:1.55;
-  color:#46525E;
+  color:#AEB6C4;
 }
-/* The containment notice, small, on a sign at the edge of the field. */
-.meadow-notice{
+/* The containment notice, small, on a sign by the skirting board. */
+.scene-notice{
   position:fixed;bottom:16px;left:16px;z-index:1;
   max-width:280px;
   margin:0;
   padding:8px 10px;
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(70,82,94,.3);
+  background:rgba(15,19,29,.85);
+  border:1px solid rgba(174,182,196,.25);
   font-family:"IBM Plex Mono",ui-monospace,monospace;
   font-size:.6rem;
   line-height:1.55;
   letter-spacing:.08em;
   text-transform:uppercase;
-  color:#46525E;
+  color:#AEB6C4;
 }
-/* The telephone. You cannot hear it. */
-.m-light{animation:blink 1.4s steps(1) infinite}
-@keyframes blink{50%{opacity:.12}}
-.meadow-caption p{margin:0 0 14px}
-.meadow-exit{display:flex;justify-content:center}
-.meadow-exit a{
+.scene-caption p{margin:0 0 14px}
+/* What happens when somebody tries anyway. */
+.scene-caption .meadow-reply{min-height:1.55em;color:#E3A3A3;font-style:italic}
+.scene-exit{display:flex;justify-content:center}
+.scene-exit a{
   font-family:"IBM Plex Mono",ui-monospace,monospace;
   font-size:.7rem;
   letter-spacing:.12em;
   text-transform:uppercase;
-  color:#46525E;
+  color:#AEB6C4;
   text-decoration:underline;
   text-underline-offset:4px;
 }
-@media (prefers-reduced-motion:reduce){.m-clouds,.m-light{animation:none}}
+/* On a wide screen the way back is on the floor, opposite the notice,
+   where it cannot sit on the door frame. */
+@media (min-width:640px){.scene-exit{position:fixed;right:16px;bottom:16px}}
+@media (prefers-reduced-motion:reduce){.m-stage *,.m-stage ::before,.m-stage ::after{animation:none !important}.m-spore{display:none !important}}
 
 /* The Long Corridor: the page is the length of it. */
 .long{height:140vh}
@@ -1755,7 +2039,8 @@ const recordsPage = shell({
   body: '  <div id="room">' + renderRoom(recordsB1, rTicket(RECORDS, null)) + "</div>",
   script: `<!-- The personnel file on B8 is your own localStorage, read in your own
      browser by personnelFile() below. Nothing about you has left it, and
-     nothing down here writes to it. Look. -->
+     the one thing down here that writes to it is the window on B10, which
+     counts the seconds you spend looking out. Look. -->
 <script>
 /* Records and Retention. Every room is generated from its address by the
    functions below, which are the same functions build.js ran to check the
@@ -1764,7 +2049,8 @@ const RECORDS = ${JSON.stringify(RECORDS).replace(/</g, "\\u003c")};
 const SEED = ${JSON.stringify(RECORDS_SEED)};
 const OPEN = ${RECORDS_OPEN};
 ${[rHash, rRng, rPick, rLevel, roomAt, rStamp, rTicket, renderRoom].map(f => f.toString()).join("\n")}
-const MEADOW_SVG = ${JSON.stringify(MEADOW_SVG).replace(/</g, "\\u003c")};
+const MEADOW_SCENE = ${JSON.stringify(MEADOW_SCENE).replace(/</g, "\\u003c")};
+const WINDOW_SCENE = ${JSON.stringify(WINDOW_SCENE).replace(/</g, "\\u003c")};
 const PROCEDURE = ${JSON.stringify(PROCEDURE)};
 const GENRE_LABELS = ${JSON.stringify(Object.fromEntries(GENRES.map(g => [g.id, g.label])))};
 /* Dated in the Office's own hand, as on the form. */
@@ -1838,21 +2124,132 @@ const SPECIALS = {
       + row(L.display, display) + row(L.battery, B.undisclosed, "badge-battery") + "</dl>"
       + '<button class="linkbtn" type="button" id="lose-badge">' + esc(B.lost) + "</button></div>" };
   },
-  /* The one room that keeps the time of day: the sky as it is outside. */
-  window() {
-    const h = new Date().getHours();
-    const sky = h >= 21 || h < 5 ? "night" : h < 8 ? "dawn" : h < 17 ? "day" : "dusk";
-    return { label: "View", readout: "Unobstructed", html: '<div class="window" data-sky="' + sky + '"></div>' };
-  },
   committee() {
     return { label: "Session", readout: "In progress", html: '<div class="stage"><p class="name is-idle" id="session-name" style="visibility:hidden">'
       + esc(RECORDS.fixed.committee.result) + '</p><div class="committee" id="session-log"></div></div>' };
   }
 };
 
+/* The scenes are drawn at a fixed size and scaled to the window: the
+   stage is given the window's shape at a scale where it is at least
+   w0 x h0, so nothing in the middle is ever cut off. */
+function fitStage(stage, w0, h0) {
+  const box = stage.parentElement;
+  return () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    const k = Math.min(w / w0, h / h0);
+    stage.style.width = w / k + "px";
+    stage.style.height = h / k + "px";
+    stage.style.transform = "scale(" + k + ")";
+  };
+}
+/* The one room that keeps the time of day: the sky as it is outside. */
+const skyNow = () => {
+  const h = new Date().getHours();
+  return h >= 21 || h < 5 ? "night" : h < 8 ? "dawn" : h < 17 ? "day" : "dusk";
+};
+/* Seconds spent looking out of the window on B10, this clock hour and in
+   all. Kept in this browser, shown in the personnel file on B8, shredded
+   with the minutes. */
+const EXPOSURE_KEY = "sng.window.v1";
+const clockHour = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()); };
+const minSec = s => Math.floor(s / 60) + ":" + pad(s % 60);
 /* What a special does once it is on the page. Each returns a function that
    stops it, called when the visitor leaves the room. */
 const RUNNING = {
+  /* Looking out: hover, a held finger, or keyboard focus. Every second
+     looking is counted against the hour's allowance, and the room has
+     something to say about it at 2, 5, 8 and 11 seconds - and at 14, once
+     the allowance is spent. */
+  window() {
+    const box = document.querySelector(".outlook");
+    const win = document.getElementById("w-window");
+    const line = document.getElementById("w-line");
+    const notice = document.getElementById("w-notice");
+    const T = RECORDS.fixed.window.stare;
+    const thoughts = T.thoughts[box.dataset.sky];
+    const zoom = box.querySelector(".w-zoom");
+    const recess = win.querySelector(".w-recess");
+    const fitRoom = fitStage(box.querySelector(".w-stage"), 900, 760);
+    /* The window's centre is moved to the middle of the room and scaled
+       until the frame is past every edge. Offsets, not bounding boxes:
+       they ignore the stage's scale and any zoom already under way. */
+    const fit = () => {
+      fitRoom();
+      let x = win.offsetWidth / 2, y = win.offsetHeight / 2;
+      for (let el = win; el && el !== zoom; el = el.offsetParent) { x += el.offsetLeft; y += el.offsetTop; }
+      const w = zoom.clientWidth, h = zoom.clientHeight;
+      zoom.style.transformOrigin = x + "px " + y + "px";
+      zoom.style.setProperty("--dx", w / 2 - x + "px");
+      zoom.style.setProperty("--dy", h / 2 - y + "px");
+      zoom.style.setProperty("--zoom", (1.15 * Math.max(w / recess.clientWidth, h / recess.clientHeight)).toFixed(3));
+    };
+    let s = 0, id = null;
+    const say = t => {
+      if (t) line.textContent = t;
+      line.classList.toggle("is-on", !!t);
+    };
+    const tick = () => {
+      s++;
+      const kept = read(EXPOSURE_KEY) || {};
+      const hour = (kept.hour === clockHour() ? kept.h || 0 : 0) + 1;
+      try { localStorage.setItem(EXPOSURE_KEY, JSON.stringify({ hour: clockHour(), h: hour, total: (kept.total || 0) + 1 })); } catch (e) { /* unrecorded */ }
+      say(s >= 14 && hour > T.allowance ? T.over : s >= 11 ? T.insurance : s >= 8 ? T.reminder
+        : s >= 5 ? thoughts[1] : s >= 2 ? thoughts[0] : "");
+      if (s >= 5) box.dataset.glitch = s >= 11 ? "3" : s >= 8 ? "2" : "1";
+    };
+    const look = () => {
+      if (id) return;
+      s = 0;
+      box.dataset.staring = "";
+      id = setInterval(tick, 1000);
+    };
+    const away = () => {
+      if (!id) return;
+      clearInterval(id);
+      id = null;
+      delete box.dataset.staring;
+      delete box.dataset.glitch;
+      say("");
+    };
+    const hidden = () => { if (document.hidden) away(); };
+    win.addEventListener("pointerenter", look);
+    win.addEventListener("pointerleave", away);
+    win.addEventListener("pointercancel", away);
+    win.addEventListener("focus", look);
+    win.addEventListener("blur", away);
+    win.addEventListener("contextmenu", ev => ev.preventDefault());
+    document.addEventListener("visibilitychange", hidden);
+    document.getElementById("w-sign").addEventListener("click", () => notice.showModal());
+    notice.addEventListener("click", ev => { if (ev.target === notice) notice.close(); });
+    fit();
+    addEventListener("resize", fit);
+    return () => {
+      away();
+      removeEventListener("resize", fit);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  },
+  /* The room is drawn at a fixed size; fit it to the window with room
+     above the door for the line on the wall. Each attempt at the telephone
+     gets the next reply, and the light blinks a little faster. The last
+     reply is the one that stays. */
+  meadow() {
+    const stage = document.querySelector(".m-stage");
+    const reply = document.getElementById("meadow-reply");
+    const replies = RECORDS.fixed.meadow.replies;
+    const fit = fitStage(stage, 520, 700);
+    let tries = 0;
+    const answer = () => {
+      reply.textContent = replies[Math.min(tries, replies.length - 1)];
+      tries++;
+      stage.style.setProperty("--blink", Math.max(.35, 1.1 - tries * .12).toFixed(2) + "s");
+    };
+    fit();
+    addEventListener("resize", fit);
+    document.getElementById("m-phone").addEventListener("click", answer);
+    return () => removeEventListener("resize", fit);
+  },
   /* Only where the browser offers it (Chromium); elsewhere the line stays
      "Not disclosed", which is true. */
   badge() {
@@ -1912,14 +2309,18 @@ function personnelFile() {
   let seen = {}, record = {};
   try { seen = JSON.parse(localStorage.getItem("sng.seen.v1")) || {}; } catch (e) { seen = {}; }
   try { record = JSON.parse(localStorage.getItem("sng.record.v1")) || {}; } catch (e) { record = {}; }
+  let looked = {};
+  try { looked = JSON.parse(localStorage.getItem(EXPOSURE_KEY)) || {}; } catch (e) { looked = {}; }
+  const exposure = looked.total ? '<p class="blurb">' + esc(P.exposure.replace("{total}", minSec(looked.total))
+    .replace("{hour}", minSec(looked.hour === clockHour() ? looked.h || 0 : 0))) + "</p>" : "";
   const genres = Object.keys(seen).filter(k => Array.isArray(seen[k]) && seen[k].length);
-  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>";
+  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>" + exposure;
   const n = genres.reduce((t, k) => t + seen[k].length, 0);
   const d = record.first ? new Date(record.first) : null;
   const opened = d ? String(d.getDate()).padStart(2, "0") + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() : "a date not recorded";
   return '<p class="blurb">' + esc(P.summary.replace("{date}", opened).replace("{n}", String(n))) + "</p>"
     + '<dl class="file">' + genres.map(k => "<dt>" + esc(GENRE_LABELS[k] || k) + "</dt>"
-      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>";
+      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>" + exposure;
 }
 (function () {
   const host = document.getElementById("room");
@@ -1953,7 +2354,12 @@ function personnelFile() {
     host.innerHTML = renderRoom(room, extra);
     if (room.special === "meadow") {
       root.dataset.scene = "meadow";
-      host.querySelector(".meadow").innerHTML = MEADOW_SVG;
+      host.querySelector(".meadow").innerHTML = MEADOW_SCENE;
+    } else if (room.special === "window") {
+      root.dataset.scene = "window";
+      const box = host.querySelector(".outlook");
+      box.dataset.sky = skyNow();
+      box.innerHTML = WINDOW_SCENE;
     } else {
       delete root.dataset.scene;
     }
