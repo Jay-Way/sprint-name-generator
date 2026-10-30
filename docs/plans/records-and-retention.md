@@ -517,35 +517,52 @@ itself final (*Rev. 4, Final*).
 
 The owner's idea: the Office is not the only institution underground, and
 the others know of each other - Aperture, Black Mesa, the Federal Bureau of
-Control in the Oldest House, the SCP Foundation. Not built yet; written down
-so it is not lost.
+Control in the Oldest House, the SCP Foundation. Built 30 Oct 2026 as
+`RECORDS.facilities` and the fixed room `correspondence` in `content.js`.
 
-Rules, if it is built:
+Rules:
 
 - **Never a name.** Only things a reader recognises: a place, a phrase, an
   object class. Subtler, and it keeps trademarks (Valve, Remedy) off the
   site. "Aperture Regulation" on the B10 notice was cut for this reason; it
   now reads *Protocol 409-B · Internal Regulation*.
-- **At most one per level**, spread across the bands, in the mundane pool or
-  on notices. Never explained.
-- **Read `IDEAS.md` first.** Nothing here may collide with the hints the
-  escalation puzzle depends on.
+- **One line to a corridor**, at most two corridors and a stairwell to a
+  level (the owner's call; the first draft said one per level). Each line
+  replaces the notice its corridor would have drawn, every day of the week.
+  `build.js` fails if two land on the same corridor or one is not posted
+  where it says.
+- **Plain near the top, devoted further down.** B1-B3 are for anyone who has
+  played the games; from B7 they are for people who have played them twice.
+- **Never explained**, with one exception: the two letters on B11 discuss
+  the window and the meadow, because the owner wanted the partner sites to
+  have noticed them.
+- **Read `IDEAS.md` first.** The collisions that remain (SCP's object class
+  and redaction near SN-07's restriction, SCP-914's settings near Rev. 4)
+  were accepted by the owner.
 
-Candidates (drafts, none signed off):
+What is posted, by level (corridor index in `at`, as for fixed rooms):
 
-- Aperture: *Transfer requests to the testing facility in Upper Michigan are
-  no longer being processed.*
-- Black Mesa: *Anomalous materials are not stored on this level. Please
-  redirect deliveries to New Mexico.*
-- The Oldest House: *The building is larger on the inside. This has been
-  reported to Facilities, who are aware.* Or: *The janitor is not to be asked
-  where he is from.*
-- SCP: a lost-property label, *Object class: Safe.* Or the Office's own
-  motto: *Records are to be secured, contained and protected.*
-- The thread that ties them: a circular on a landing, *Circular from the
-  Joint Committee on Subterranean Facilities: glazing standards are now
-  shared between partner sites (4).* It would explain Protocol 409-B on the
-  B10 window after the fact, without anyone saying so there.
+| Level | Lines |
+|---|---|
+| B1 | cake complaint; the crowbar |
+| B2 | the storage cube; a box labelled *Object class: Safe* |
+| B3 | refreshments the committee cannot confirm; *secured, contained and protected* |
+| B4 | transfers to Upper Michigan; deliveries to New Mexico |
+| B5 | the janitor; the refrigerator that must be watched |
+| B6 | the statue (*blink in turns*); a λ in the stairwell |
+| B7 | writing behind the panels |
+| B8 | lemons, *Signed, C.J.* |
+| B9 | *Hyvä.* in pencil; the directory of partner sites |
+| B10 | the right man in the wrong place |
+| B11 | the corridor with the ashtrays; the Joint Committee circular, after the window so that it explains Protocol 409-B; the letters room |
+
+Lines from partner sites go up on the Office's letterhead (pinned, reference
+`RR-B<level>/<corridor>`); the ones staff wrote themselves are post-its
+(`on: "postit"`). The Site-19 letter on B11 encloses a photograph of the
+meadow, `images/meadow-enclosure.jpg`, which does not match the room on B12.
+It is shown with the letter and never in the meadow, so comparing the two
+takes a second window.
+| B12 | *«The Board sees your effort.»*, on the level with the telephone |
 
 ## Open questions
 

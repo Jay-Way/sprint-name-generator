@@ -582,14 +582,85 @@ const RECORDS = {
         "The call is being held for you. It will be held for as long as it takes.",
         "Somewhere across the meadow, a receiver is lifted. Nobody speaks.",
       ]
-      },
+    },
     answers: {
       d: 11, at: 1,
       name: "Department of Answers",
       text: "A small office. Two chairs. A filing cabinet. A notice on the desk states that all enquiries have been answered.",
       notice: "Please refrain from asking questions that should remain unanswered. Incident MORT-23554 should not be repeated.",
+    },
+    /* Post from two of the partner sites, about the window above and the
+       meadow below. Read between the two, on B11. Never a name: a
+       letterhead gives a place and a department, nothing more. */
+    correspondence: {
+      d: 11, at: 2,
+      name: "Correspondence, Partner Sites",
+      text: "Pigeonholes, labelled by site rather than by department. Four of them are labelled. Two letters have been opened, read, and filed as received.",
+      notice: "Correspondence from partner sites is filed as received. Replies are not sent: there is no form for it.",
+      letters: [
+        {
+          from: "Research Sector, 33 Thomas Street Annex, New York Office",
+          re: "Your window, B10",
+          body: [
+            "We have received your notice concerning the window on B10. The window, we understand, has received ours.",
+            "A window presenting an unobstructed view of the sky from ten levels below ground would ordinarily qualify as an Altered Item. Your description, however, suggests that the window itself may not be the relevant object.",
+            "We note your viewing allowance of fifteen seconds per hour. In our experience, items of this kind are safer watched than avoided; we keep a refrigerator on those terms. We would propose an exchange of procedures.",
+          ],
+          sign: "Head of Research"
+        },
+        {
+          from: "Site-19, Containment",
+          re: "Storage (External), B12",
+          body: [
+            "Item: the door marked Storage (External), and the meadow beyond it. Object class: pending.",
+            "Your posted procedures have been reviewed and adopted unchanged: do not enter; do not try to answer the phone; under no circumstances retrieve objects from the meadow. We have nothing to add to them.",
+            "We have examined the photograph accompanying your report. Several details differ from the notes our field team made on the first visit. We have not been able to determine whether the photograph is accurate, or has been altered. In future, please enclose a written description with any photograph.",
+          ],
+          sign: "Dr. ██████",
+          /* The photograph itself, sent back with the letter. Shown here and
+             not in the meadow, so that comparing the two takes a second
+             window. It does not quite match the room: that is the point.
+             DRAFT, not signed off: the alt text and the caption. */
+          enclosure: {
+            src: "/images/meadow-enclosure.jpg",
+            alt: "A photograph. A meadow under a cloudy sky. A desk stands in the grass, a chair drawn up to it, a telephone on it with its red light lit. A fluorescent tube hangs above the desk from nothing. Filing cabinets stand among the grass. On the horizon, tall doorways. A path has been trodden through the grass to the desk.",
+            caption: "Enclosure: 1 photograph. Returned with thanks."
+          }
+        }
+      ]
     }
   },
+
+  /* The other institutions underground, which know of each other. See the
+     plan, "The other facilities": never a name, never explained. Each line
+     is posted on one corridor (`at`, as for fixed rooms) in place of the
+     notice it would have drawn, on weekdays and at the weekend alike; a
+     `landing` line is added to that level's stairwell. Easy to place near
+     the top, for the devoted further down. */
+  facilities: [
+    { d: 1, at: 0, notice: "Complaints regarding the absence of cake must be directed to the issuing facility." },
+    { d: 1, at: 2, on: "postit", notice: "A crowbar has been handed in. It is being held for the physicist who keeps coming back for it." },
+    { d: 2, at: 0, on: "postit", notice: "Lost property: one (1) weighted storage cube, heart decal. The owner has been told it cannot speak." },
+    { d: 2, at: 3, notice: "Lost property, unclaimed: a small sealed box. Its label reads ‘Object class: Safe’." },
+    { d: 3, at: 1, notice: "Refreshments were promised at the conclusion of the session. The committee cannot confirm them." },
+    { d: 3, at: 3, notice: "Records are to be secured, contained and protected." },
+    { d: 4, at: 1, notice: "Transfer requests to the testing facility in Upper Michigan are no longer being processed." },
+    { d: 4, at: 3, notice: "Anomalous materials are not stored on this level. Please redirect deliveries to New Mexico." },
+    { d: 5, at: 0, on: "postit", notice: "The janitor is not to be asked where he is from." },
+    { d: 5, at: 2, notice: "The refrigerator on this level must be looked at at all times." },
+    { d: 6, at: 1, on: "postit", notice: "The statue on this level is to be kept in someone’s line of sight at all times. Blink in turns." },
+    { d: 6, landing: "Scratched into the paint beside the handrail: λ." },
+    { d: 7, at: 2, notice: "Someone has been writing on the walls behind the panels. Facilities believe it is a contractor." },
+    { d: 8, at: 1, on: "postit", notice: "Lemons are not to be returned to the kitchen. Signed, C.J." },
+    { d: 9, at: 0, on: "postit", notice: "Floor recently mopped. Underneath, in pencil: ‘Hyvä.’ — Facilities" },
+    { d: 9, at: 3, notice: "Internal directory, partner sites. Upper Michigan, Testing: ext. 19. New Mexico, Sector C: ext. 3883. New York, a building not shown on maps: the line is always engaged. Site-19, Containment: ext. 173. Storage (External): no extension. Calls are not to be returned." },
+    { d: 10, at: 1, notice: "The right man in the wrong place can make all the difference. Please return to your assigned place." },
+    { d: 11, at: 0, notice: "Staff are reminded not to follow the music in the corridor with the ashtrays." },
+    /* After the window, so that it explains Protocol 409-B without anyone
+       on B10 having to. */
+    { d: 11, at: 3, notice: "Circular from the Joint Committee on Subterranean Facilities: glazing standards are now shared between partner sites (4). Protocol 409-B applies throughout." },
+    { d: 12, at: 1, notice: "«The Board sees your effort.»" }
+  ],
 
   /* B(open + 1), while the levels below it are still being written. */
   closed: {
