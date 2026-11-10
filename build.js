@@ -1381,7 +1381,7 @@ function renderRoom(room, extra) {
 
   /* Specials are filled in by the page script, which knows these. */
   const SPECIAL_ROOMS = { department: ["summary", "none"], timecard: ["card", "overtime"], committee: ["result"], long: [], window: [], meadow: ["exit"],
-    badge: ["prompt", "button", "lost", "photo", "header", "undisclosed"] };
+    badge: ["prompt", "button", "lost", "photo", "header", "undisclosed"], closet: ["withDesk"] };
   for (const [k, f] of Object.entries(RECORDS.fixed)) {
     if (!f.special) continue;
     if (!SPECIAL_ROOMS[f.special]) fail("fixed." + k + ".special '" + f.special + "' is not one the page script knows");
@@ -1401,6 +1401,21 @@ function renderRoom(room, extra) {
   }
   text(RECORDS.fixed.personnel.exposure, "fixed.personnel.exposure");
   if (!/\{total\}/.test(RECORDS.fixed.personnel.exposure) || !/\{hour\}/.test(RECORDS.fixed.personnel.exposure)) fail("fixed.personnel.exposure needs {total} and {hour}");
+  /* The broom closet's lines fall due in order. A line due no later than
+     the one before it would never be read in its place, and the page
+     script takes the last of `lines` to be the one that allocates the desk. */
+  for (const k of ["lines", "returning"]) {
+    const L = RECORDS.fixed.closet[k];
+    list(L, "fixed.closet." + k);
+    L.forEach((l, i) => {
+      const where = "fixed.closet." + k + "[" + i + "]";
+      text(l.text, where + ".text");
+      if (!Number.isInteger(l.after) || l.after < 0) fail(where + ".after must be a whole number of seconds");
+      if (i && l.after <= L[i - 1].after) fail(where + ".after must be later than the line before it");
+    });
+  }
+  for (const t of ["closet", "desk"]) text(RECORDS.fixed.personnel[t], "fixed.personnel." + t);
+  if (!/\{total\}/.test(RECORDS.fixed.personnel.closet)) fail("fixed.personnel.closet needs {total}");
   if (!Array.isArray(RECORDS.fixed.meadow.replies)) fail("fixed.meadow.replies must be a list");
   RECORDS.fixed.meadow.replies.forEach((t, i) => text(t, "fixed.meadow.replies[" + i + "]"));
   for (const t of ["button", "none", "taken"]) text(RECORDS.ticket[t], "ticket." + t);
@@ -2058,6 +2073,24 @@ const RECORDS_CSS = `
 .file dt:first-child{margin-top:0}
 .file dd{margin:0;font-size:.94rem;line-height:1.6;color:var(--ink-2)}
 
+/* The broom closet's attendance log: the committee log's type, kept in
+   the flow of the form, with the time of day where the committee has its
+   line numbers. Earlier lines fade less than the committee's do - somebody
+   who left the tab in the closet comes back to read all of them. */
+.closet-log{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  min-height:1.5em;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.76rem;
+  line-height:1.5;
+  letter-spacing:.04em;
+  color:var(--ink-2);
+}
+.closet-log .cline span{flex:none}
+.closet-log .cline:not(:last-child){opacity:.66}
+
 /* Decay. The script sets --depth (0 at B1, 1 at B13) and data-band on
    <html>; everything below keys off those two and nothing else. It is
    meant to be noticed late: by B6 the visitor should suspect it has been
@@ -2194,8 +2227,9 @@ const recordsPage = shell({
   body: '  <div id="room">' + renderRoom(recordsB1, rTicket(RECORDS, null)) + "</div>",
   script: `<!-- The personnel file on B8 is your own localStorage, read in your own
      browser by personnelFile() below. Nothing about you has left it, and
-     the one thing down here that writes to it is the window on B10, which
-     counts the seconds you spend looking out. Look. -->
+     the two things down here that write to it are the window on B10, which
+     counts the seconds you spend looking out, and the broom closet on B4,
+     which counts the seconds you spend in it. Look. -->
 <script>
 /* Records and Retention. Every room is generated from its address by the
    functions below, which are the same functions build.js ran to check the
@@ -2282,6 +2316,11 @@ const SPECIALS = {
   committee() {
     return { label: "Session", readout: "In progress", html: '<div class="stage"><p class="name is-idle" id="session-name" style="visibility:hidden">'
       + esc(RECORDS.fixed.committee.result) + '</p><div class="committee" id="session-log"></div></div>' };
+  },
+  /* An empty log. RUNNING.closet fills it in, a line at a time. */
+  closet() {
+    return { label: "Attendance", readout: (read(CLOSET_KEY) || {}).desk ? "Desk allocated" : "Recorded",
+      html: '<div class="closet-log" id="closet-log" role="log"></div>' };
   }
 };
 
@@ -2309,6 +2348,12 @@ const skyNow = () => {
 const EXPOSURE_KEY = "sng.window.v1";
 const clockHour = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()); };
 const minSec = s => Math.floor(s / 60) + ":" + pad(s % 60);
+/* Seconds spent in the broom closet on B4, in all, and whether they have
+   earned a desk yet. Kept in this browser, shown in the personnel file on
+   B8, shredded with the minutes. A tab can be left in a broom closet for
+   longer than an hour, so this one is written out in hours where it has to be. */
+const CLOSET_KEY = "sng.closet.v1";
+const hourMinSec = s => s < 3600 ? minSec(s) : Math.floor(s / 3600) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60);
 /* What a special does once it is on the page. Each returns a function that
    stops it, called when the visitor leaves the room. */
 const RUNNING = {
@@ -2417,6 +2462,44 @@ const RUNNING = {
     }
     return () => { live = false; };
   },
+  /* The broom closet keeps time by the clock, not by the timer. A tab left
+     in it over lunch has been in it over lunch: every line that fell due in
+     the meantime is posted on return, with the time it fell due. The last of
+     the first set of lines allocates the desk, and the room's description
+     is amended where it stands. */
+  closet() {
+    const C = RECORDS.fixed.closet;
+    const log = document.getElementById("closet-log");
+    const kept = read(CLOSET_KEY) || {};
+    const before = kept.s || 0;
+    const lines = kept.desk ? C.returning : C.lines;
+    const entered = Date.now();
+    let desk = !!kept.desk, shown = 0;
+    const tick = () => {
+      const s = Math.max(0, Math.floor((Date.now() - entered) / 1000));
+      for (; shown < lines.length && lines[shown].after <= s; shown++) {
+        const due = new Date(entered + lines[shown].after * 1000);
+        const row = document.createElement("div");
+        const at = document.createElement("span");
+        row.className = "cline";
+        at.textContent = pad(due.getHours()) + ":" + pad(due.getMinutes()) + ":" + pad(due.getSeconds());
+        /* The space is for anything that reads the line rather than sees it. */
+        row.append(at, " " + lines[shown].text);
+        log.appendChild(row);
+        if (!desk && shown === lines.length - 1) {
+          desk = true;
+          const lede = document.querySelector("#room .lede");
+          const readout = log.closest(".field").querySelector(".readout");
+          if (lede) lede.textContent = C.withDesk;
+          if (readout.textContent.trim()) readout.textContent = "Desk allocated";
+        }
+      }
+      try { localStorage.setItem(CLOSET_KEY, JSON.stringify({ s: before + s, desk, at: Date.now() })); } catch (e) { /* unrecorded */ }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => { clearInterval(id); tick(); };
+  },
   timecard() {
     const T = RECORDS.fixed.timecard;
     const el = document.getElementById("timecard");
@@ -2468,14 +2551,20 @@ function personnelFile() {
   try { looked = JSON.parse(localStorage.getItem(EXPOSURE_KEY)) || {}; } catch (e) { looked = {}; }
   const exposure = looked.total ? '<p class="blurb">' + esc(P.exposure.replace("{total}", minSec(looked.total))
     .replace("{hour}", minSec(looked.hour === clockHour() ? looked.h || 0 : 0))) + "</p>" : "";
+  /* And the broom closet, where it has anything to report. */
+  let closet = {};
+  try { closet = JSON.parse(localStorage.getItem(CLOSET_KEY)) || {}; } catch (e) { closet = {}; }
+  const level = "B" + RECORDS.fixed.closet.d;
+  const attendance = (closet.s ? '<p class="blurb">' + esc(P.closet.replace("{level}", level).replace("{total}", hourMinSec(closet.s))) + "</p>" : "")
+    + (closet.desk ? '<p class="blurb">' + esc(P.desk.replace("{level}", level)) + "</p>" : "");
   const genres = Object.keys(seen).filter(k => Array.isArray(seen[k]) && seen[k].length);
-  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>" + exposure;
+  if (!genres.length) return '<p class="blurb">' + esc(P.empty) + "</p>" + exposure + attendance;
   const n = genres.reduce((t, k) => t + seen[k].length, 0);
   const d = record.first ? new Date(record.first) : null;
   const opened = d ? String(d.getDate()).padStart(2, "0") + " " + MONTHS[d.getMonth()] + " " + d.getFullYear() : "a date not recorded";
   return '<p class="blurb">' + esc(P.summary.replace("{date}", opened).replace("{n}", String(n))) + "</p>"
     + '<dl class="file">' + genres.map(k => "<dt>" + esc(GENRE_LABELS[k] || k) + "</dt>"
-      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>" + exposure;
+      + seen[k].map(x => "<dd>" + esc(x) + "</dd>").join("")).join("") + "</dl>" + exposure + attendance;
 }
 (function () {
   const host = document.getElementById("room");
@@ -2498,6 +2587,8 @@ function personnelFile() {
     /* Somebody who has been far enough down to be treated as staff is
        not asked to sign in again. */
     if (room.id === "b1/landing" && deepest >= 7) room.notice = RECORDS.welcomeBack;
+    /* Nor is somebody with a desk in the broom closet shown it without one. */
+    if (room.special === "closet" && (read(CLOSET_KEY) || {}).desk) room.text = RECORDS.fixed.closet.withDesk;
     if (room.d > deepest) {
       deepest = room.d;
       try { localStorage.setItem(RETENTION_KEY, JSON.stringify({ deepest, at: Date.now() })); } catch (e) { /* the basement forgets */ }

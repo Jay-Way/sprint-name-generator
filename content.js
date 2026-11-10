@@ -473,7 +473,50 @@ const RECORDS = {
       notice: "The Office does not keep your minutes. Somebody down here does.",
       empty: "The file has been prepared. It is empty. It is not expecting to stay that way.",
       summary: "File opened {date}. Designations on record: {n}.",
-      exposure: "Window exposure, B10: {total} in total, {hour} this hour. Allowance: 0:15 per hour."
+      exposure: "Window exposure, B10: {total} in total, {hour} this hour. Allowance: 0:15 per hour.",
+      /* What the broom closet kept - see fixed.closet. DRAFT, not signed off. */
+      closet: "Broom closet attendance, {level}: {total}.",
+      desk: "Desk allocated: broom closet, {level}. No objection was received."
+    },
+    /* A door just off the landing with nothing behind it, for anyone who has
+       ever stood in a broom closet to see what the building would say. What
+       it does is wait. The longer a visitor stays, the more the Office has
+       to record about it, one line at a time; after five minutes it runs
+       out of ways to describe a visitor in a broom closet and gives them a
+       desk there instead. Familiar, never hostile.
+
+       `after` is seconds since they came in, by the clock, whether or not
+       anyone is looking at the tab. The last of `lines` is the allocation:
+       from then on the room reads `withDesk` and the log runs `returning`.
+       The log speaks of "the visitor" until the desk, and to "you" after it.
+       Seconds and the desk are kept in this browser under sng.closet.v1,
+       shown in the personnel file on B8, and shredded with the minutes.
+
+       DRAFT, not signed off: every line here. */
+    closet: {
+      d: 4, at: 0, special: "closet",
+      name: "Broom Closet",
+      text: "A broom closet. A broom, a mop, a bucket, a shelf of cloths. There is nothing else here.",
+      withDesk: "A broom closet. A broom, a mop, a bucket, a shelf of cloths, and a desk, facing the shelf. The desk is yours.",
+      notice: "Cleaning equipment is to be returned after use. See the rota.",
+      lines: [
+        { after: 0, text: "A visitor has entered the broom closet." },
+        { after: 8, text: "There is nothing in the broom closet. This has been confirmed." },
+        { after: 20, text: "The broom closet is not part of the visit. The visit continues in the corridor." },
+        { after: 35, text: "No decision is required in the broom closet. None is available." },
+        { after: 55, text: "The broom closet is not a workplace." },
+        { after: 80, text: "The visitor is still here." },
+        { after: 110, text: "The exit is behind the visitor. It has been there throughout." },
+        { after: 145, text: "The visitor has not moved, and is presumed to have left." },
+        { after: 185, text: "The visit will be continued by the next available visitor. Would the next available visitor please leave the broom closet." },
+        { after: 240, text: "There is no next available visitor. The broom closet has been reclassified as a workplace." },
+        { after: 300, text: "A desk has been allocated to you. It is in the broom closet." }
+      ],
+      returning: [
+        { after: 0, text: "You are at your desk." },
+        { after: 30, text: "Attendance has been recorded. On this occasion it was not recorded on your behalf." },
+        { after: 120, text: "There is nothing in the broom closet. The desk and its occupant are listed separately." }
+      ]
     },
     /* The badge is printed from what the browser
        already tells every site it visits: time zone, language, system,
